@@ -13,6 +13,8 @@ import platform
 from PIL import Image
 import os
 from pathlib import Path
+from queue import Queue
+from threading import Thread
 
 from .image_generation import depth2img
 from .image_generation import txt2img
@@ -53,16 +55,60 @@ def get_next_output_series_number() -> int:
 
 
 ###############################################################################
+# Worker Thread
+#
+# Image generation happens in this thread.
+###############################################################################
+
+class WorkerThread(Thread):
+    def __init__(self, queue: Queue):
+        super().__init__()
+        self._queue = queue
+
+    def run(self):
+        print("Started worker thread")
+        model, sampler = txt2img.initialize_model(sampler = "ddim", config = "python/stablediffusion/configs/stable-diffusion/v2-inference-v.yaml", ckpt = "sd_checkpoints/v2-1_768-ema-pruned.ckpt")
+        #TODO next: make thread killable: https://stackoverflow.com/questions/11436502/closing-all-threads-with-a-keyboard-interrupt
+        while True:
+            prompt = self._queue.get(block = True)
+            print("Processing txt2img prompt: %s" % prompt)
+            try:
+                self._generate_image_from_prompt(model = model, sampler = sampler, prompt = prompt, negative_prompt = None)
+            except Exception as e:
+                print("Error: %s" % e)
+
+    def _generate_image_from_prompt(self, model, sampler, prompt, negative_prompt):
+        series_number = get_next_output_series_number()
+        results = txt2img.predict(
+            model = model,
+            sampler = sampler,
+            prompt = prompt,
+            negative_prompt = negative_prompt,
+            steps = 50,
+            batch_size = 3,
+            num_samples = 3,
+            scale = 9,
+            seed = 42,
+            eta = 0
+        )
+        for i in range(len(results)):
+            output_filepath = os.path.join(options.output_dir, "out-%d-txt2img-%d.png" % (series_number, i))
+            results[i].save(output_filepath)
+            print("Wrote output image: %s" % output_filepath)
+
+
+###############################################################################
 # Client
 #
 # Continuously connects to a server and listens for requests.
 ###############################################################################
 
 class ClientTask(MessageHandler):
-    def __init__(self, endpoint: str):
+    def __init__(self, endpoint: str, queue: Queue):
         super().__init__()
         self._endpoint = endpoint
         self._reconnect_delay_seconds = 5
+        self._queue = queue
 
     async def run(self):
         client = Client(connect_to = self._endpoint, message_handler = self)
@@ -84,14 +130,22 @@ class ClientTask(MessageHandler):
 
     @handler(Txt2ImgRequestMessage)
     async def handle_Txt2ImgRequestMessage(self, session: Session, msg: Txt2ImgRequestMessage, timestamp: float):
-        #TODO: send prompt to a processing thread
-        print("Prompt: %s" % msg.prompt)
+        #TODO: https://docs.python.org/3/library/weakref.html indicates checking liveness of weakrefs is threadsafe, so we should pass session weakrefs, too
+        self._queue.put(item = msg.prompt, block = True)
 
 
 def run_client():
+    # Concurrent queue for communication between asyncio client session and worker thread
+    queue = Queue(maxsize = 128)
+
+    # Start worker thread
+    worker_thread = WorkerThread(queue = queue)
+    worker_thread.start()
+
+    # Start client connection loop
     loop = asyncio.new_event_loop()
     tasks = []
-    client_loop = ClientTask(endpoint = options.endpoint)
+    client_loop = ClientTask(endpoint = options.endpoint, queue = queue)
     tasks.append(loop.create_task(client_loop.run()))
     loop.run_until_complete(asyncio.gather(*tasks))
 
