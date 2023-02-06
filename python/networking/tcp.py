@@ -9,6 +9,7 @@
 import asyncio
 import sys
 import time
+from typing import Tuple
 import uuid
 
 from .message_handling import MessageHandler
@@ -151,24 +152,49 @@ class Client:
     self._session = None
     self._message_handler = message_handler
 
-  async def run(self):
+  async def run(self) -> bool:
+    """
+    Connects to the endpoint and runs the session.
+
+    Returns
+    -------
+    bool
+      True if failed to connect otherwise False if connected. If a disconnect or unexpected error
+      occurs during the session, the message handler's on_disconnect() callback is invoked and
+      False is returned after cleanup.
+    """
     print("Connecting to %s:%s..." % (self._host, self._port))
-    reader, writer = await asyncio.open_connection(host = self._host, port = self._port)
+    
+    # Connect
+    try:
+      reader, writer = await asyncio.open_connection(host = self._host, port = self._port)
+    except Exception as e:
+      print("Failed to connect to %s:%s" % (self._host, self._port))
+      self._session = None
+      return True
     self._session = Session(reader = reader, writer = writer, remote_endpoint = self._host + ":" + str(self._port), message_handler = self._message_handler)
+
+    # Run until disconnect or error
     try:
       await self._message_handler.on_connect(session = self._session)
       await self._session._run()
-      return await self._message_handler.on_disconnect(session = self._session)
     except Exception as e:
       print("Unexpected error from Session or its message handler: %s" % e)
     finally:
-      await self._session._close()
+      if self._session is not None: # check in case stop() was called and session object nulled out
+        await self._message_handler.on_disconnect(session = self._session)
+        await self._session._close()
+      self._session = None
+      return False
 
   async def stop(self):
-    await self._session._close()
+    if self._session is not None:
+      await self._message_handler.on_disconnect(session = self._session)
+      await self._session._close()
+      self._session = None
 
   @staticmethod
-  def _parse_endpoint(endpoint: str) -> (str, int):
+  def _parse_endpoint(endpoint: str) -> Tuple[str, int]:
     components = endpoint.split(":")
     if len(components) != 2:
       raise ValueError("Endpoint is missing port. Expected format is: hostname:port")
