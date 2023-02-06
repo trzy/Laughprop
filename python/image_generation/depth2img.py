@@ -1,5 +1,5 @@
 #
-# python/helpers/depth2img.py
+# python/image_generation/depth2img.py
 # Bart Trzynadlowski, 2023
 #
 # Stable Diffusion v2 depth2img functions: depth-conditioned image generation. The MiDaS model can

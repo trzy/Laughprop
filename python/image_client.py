@@ -1,22 +1,34 @@
 #
-# python/image_server.py
+# python/image_client.py
 # Bart Trzynadlowski, 2023
 #
-# Main module for the image server. Image servers accept image generation requests over a TCP
-# socket.
+# Main module for the image client. Image clients connect to a specified server
+# and accept image generation requests over a TCP socket.
 #
 
 import argparse
+import asyncio
 import imageio
+import platform
 from PIL import Image
 import os
 from pathlib import Path
 
-from .helpers import depth2img
-from .helpers import txt2img
+from .image_generation import depth2img
+from .image_generation import txt2img
+
+from .networking.tcp import Session
+from .networking.tcp import Client
+from .networking.message_handling import handler
+from .networking.message_handling import MessageHandler
+from .networking.messages import *
 
 
-def load_image(url):
+###############################################################################
+# Image Handling Helpers
+###############################################################################
+
+def load_image(url) -> Image:
     data = imageio.imread(url, pilmode = "RGB")
     return Image.fromarray(data, mode = "RGB")
 
@@ -40,9 +52,56 @@ def get_next_output_series_number() -> int:
     return 0 if len(series_numbers) == 0 else (max(series_numbers) + 1)
 
 
-def run_server():
-    raise NotImplementedError("Server mode not yet implemented")
+###############################################################################
+# Client
+#
+# Continuously connects to a server and listens for requests.
+###############################################################################
 
+class ClientTask(MessageHandler):
+    def __init__(self, endpoint: str):
+        super().__init__()
+        self._endpoint = endpoint
+        self._reconnect_delay_seconds = 5
+
+    async def run(self):
+        client = Client(connect_to = self._endpoint, message_handler = self)
+        while True:
+            await client.run()
+            print("Reconnecting in %d seconds..." % self._reconnect_delay_seconds)
+            await asyncio.sleep(delay = self._reconnect_delay_seconds)
+
+    async def on_connect(self, session: Session):
+        print("Connected to: %s" % session.remote_endpoint)
+        await session.send(HelloMessage(message = "Hello from SDGame image client running on %s %s" % (platform.system(), platform.release())))
+
+    async def on_disconnect(self, session: Session):
+        print("Disconnected from: %s" % session.remote_endpoint)
+
+    @handler(HelloMessage)
+    async def handle_HelloMessage(self, session: Session, msg: HelloMessage, timestamp: float):
+        print("Hello received: %s" % msg.message)
+
+    @handler(Txt2ImgRequestMessage)
+    async def handle_Txt2ImgRequestMessage(self, session: Session, msg: Txt2ImgRequestMessage, timestamp: float):
+        #TODO: send prompt to a processing thread
+        print("Prompt: %s" % msg.prompt)
+
+
+def run_client():
+    loop = asyncio.new_event_loop()
+    tasks = []
+    client_loop = ClientTask(endpoint = options.endpoint)
+    tasks.append(loop.create_task(client_loop.run()))
+    loop.run_until_complete(asyncio.gather(*tasks))
+
+
+###############################################################################
+# Command Line Modes
+#
+# These modes handle a single prompt from the command line and are intended
+# to be used for debugging.
+###############################################################################
 
 def run_txt2img():
     assert options.prompt is not None, "--prompt required for depth2img mode"
@@ -64,7 +123,6 @@ def run_txt2img():
         output_filepath = os.path.join(options.output_dir, "out-%d-txt2img-%d.png" % (series_number, i))
         results[i].save(output_filepath)
         print("Wrote output image: %s" % output_filepath)
-
 
 def run_depth2img():
     assert options.prompt is not None, "--prompt required for depth2img mode"
@@ -92,17 +150,22 @@ def run_depth2img():
       print("Wrote output image: %s" % output_filepath)
 
 
+###############################################################################
+# Program Entry Point
+###############################################################################
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser("image_server")
-    parser.add_argument("--mode", metavar = "mode", type = str, action = "store", default = "server", help = "Mode to run in ('server', 'depth2img', 'txt2img')")
+    parser = argparse.ArgumentParser("image_client")
+    parser.add_argument("--mode", metavar = "mode", type = str, action = "store", default = "client", help = "Mode to run in ('client', 'depth2img', 'txt2img')")
+    parser.add_argument("--endpoint", metavar = "endpoint", type = str, action = "store", default = "localhost:6503", help = "Endpoint to connect to in 'client' mode")
     parser.add_argument("--prompt", metavar = "text", type = str, action = "store", help = "Prompt to use for command line image generation modes")
     parser.add_argument("--negative-prompt", metavar = "text", type = str, action = "store", help = "Negative prompt to use for command line image generation modes")
     parser.add_argument("--input-image", metavar = "filepath", type = str, action = "store", help = "Input image for modes that require it")
     parser.add_argument("--output-dir", metavar = "path", type = str, action = "store", default = "output", help = "Output directory to write generated images to")
     options = parser.parse_args()
 
-    if options.mode == "server":
-        run_server()
+    if options.mode == "client":
+        run_client()
     elif options.mode == "depth2img":
         run_depth2img()
     elif options.mode == "txt2img":

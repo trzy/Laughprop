@@ -1,5 +1,5 @@
 #
-# python/helpers/txt2img.py
+# python/image_generation/txt2img.py
 # Bart Trzynadlowski, 2023
 #
 # Stable Diffusion v2 txt2img functions.
