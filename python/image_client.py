@@ -14,7 +14,10 @@ from PIL import Image
 import os
 from pathlib import Path
 from queue import Queue
+from queue import Empty
+import signal
 from threading import Thread
+from threading import Event
 
 from .image_generation import depth2img
 from .image_generation import txt2img
@@ -64,18 +67,37 @@ class WorkerThread(Thread):
     def __init__(self, queue: Queue):
         super().__init__()
         self._queue = queue
+        self._run_event = Event()
+        self._run_event.set()       # thread will run until this is cleared
+
+    def stop(self):
+        """
+        Signals the thread to stop running and waits until complete. Call this from main thread.
+        """
+        self._run_event.clear()
+        self.join()
 
     def run(self):
         print("Started worker thread")
         model, sampler = txt2img.initialize_model(sampler = "ddim", config = "python/stablediffusion/configs/stable-diffusion/v2-inference-v.yaml", ckpt = "sd_checkpoints/v2-1_768-ema-pruned.ckpt")
-        #TODO next: make thread killable: https://stackoverflow.com/questions/11436502/closing-all-threads-with-a-keyboard-interrupt
-        while True:
-            prompt = self._queue.get(block = True)
+        while self._run_event.is_set():
+            prompt = self._try_get_work_item()
+            if prompt is None:
+                continue
             print("Processing txt2img prompt: %s" % prompt)
             try:
                 self._generate_image_from_prompt(model = model, sampler = sampler, prompt = prompt, negative_prompt = None)
             except Exception as e:
                 print("Error: %s" % e)
+        print("Finished worker thread")
+
+    def _try_get_work_item(self):
+        item = None
+        try:
+            item = self._queue.get(block = False, timeout = 0.1)
+        except Empty:
+            pass
+        return item
 
     def _generate_image_from_prompt(self, model, sampler, prompt, negative_prompt):
         series_number = get_next_output_series_number()
@@ -133,7 +155,6 @@ class ClientTask(MessageHandler):
         #TODO: https://docs.python.org/3/library/weakref.html indicates checking liveness of weakrefs is threadsafe, so we should pass session weakrefs, too
         self._queue.put(item = msg.prompt, block = True)
 
-
 def run_client():
     # Concurrent queue for communication between asyncio client session and worker thread
     queue = Queue(maxsize = 128)
@@ -142,12 +163,24 @@ def run_client():
     worker_thread = WorkerThread(queue = queue)
     worker_thread.start()
 
-    # Start client connection loop
+    # Client connection loop
     loop = asyncio.new_event_loop()
     tasks = []
     client_loop = ClientTask(endpoint = options.endpoint, queue = queue)
     tasks.append(loop.create_task(client_loop.run()))
-    loop.run_until_complete(asyncio.gather(*tasks))
+
+    # Run until Ctrl-C (KeyboardInterrupt) or some other exception
+    try:
+        loop.run_until_complete(asyncio.gather(*tasks))
+    except KeyboardInterrupt:
+        print("Terminating...")
+    except Exception:
+        raise
+    finally:
+        worker_thread.stop()
+        # No idea how to gracefully halt asyncio loop. I give up!
+        loop.stop()
+        loop.close()
 
 
 ###############################################################################
@@ -218,11 +251,15 @@ if __name__ == "__main__":
     parser.add_argument("--output-dir", metavar = "path", type = str, action = "store", default = "output", help = "Output directory to write generated images to")
     options = parser.parse_args()
 
-    if options.mode == "client":
-        run_client()
-    elif options.mode == "depth2img":
-        run_depth2img()
-    elif options.mode == "txt2img":
-        run_txt2img()
-    else:
-        raise RuntimeError("Unknown mode: %s" % options.mode)
+    try:
+        if options.mode == "client":
+            run_client()
+        elif options.mode == "depth2img":
+            run_depth2img()
+        elif options.mode == "txt2img":
+            run_txt2img()
+        else:
+            raise RuntimeError("Unknown mode: %s" % options.mode)
+        print("Program exited normally ")
+    except Exception as e:
+        print("Program died unexpectedly due to an unhandled exception: " + str(e))
