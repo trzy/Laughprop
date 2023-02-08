@@ -17,11 +17,17 @@ from .web.image_dispatcher import ImageDispatcherTask
 # Web Server
 ###############################################################################
 
-async def handler(Request):
-    return web.Response(text = "Hello from SDGame's web server!")
+def add_static_routes(app: web.Application):
+    # Redirect / -> /index.html
+    app.router.add_route(method = "*", path = "/", handler = lambda request: web.HTTPFound(location = "/index.html"))
+
+    # Serve /* from www/*
+    app.add_routes([ web.static(prefix = "/", path = "www/") ])
 
 async def run_web_server():
-    runner = web.ServerRunner(web_server = web.Server(handler))
+    app = web.Application()
+    add_static_routes(app = app)
+    runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner = runner, host = "localhost", port = options.port)
     await site.start()
