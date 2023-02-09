@@ -17,4 +17,15 @@ class HelloMessage
     }
 }
 
-export { HelloMessage };
+class ClientIDMessage
+{
+    __id = "ClientIDMessage";
+    client_id;
+
+    constructor(client_id)
+    {
+        this.client_id = client_id;
+    }
+}
+
+export { HelloMessage, ClientIDMessage };
