@@ -8,6 +8,7 @@
 
 import argparse
 import asyncio
+import aiohttp
 from aiohttp import web
 
 from .web.image_dispatcher import ImageDispatcherTask
@@ -17,16 +18,33 @@ from .web.image_dispatcher import ImageDispatcherTask
 # Web Server
 ###############################################################################
 
-def add_static_routes(app: web.Application):
+async def websocket_handler(request: web.Request):
+    print("WebSocket connection opened: %s" % request.remote)
+    ws = web.WebSocketResponse()
+    await ws.prepare(request = request)
+    async for msg in ws:
+        if msg.type == aiohttp.WSMsgType.TEXT:
+            if msg.data == "close":
+                await ws.close()
+            else:
+                await ws.send_str(msg.data + "/answer")
+        elif msg.type == aiohttp.WSMsgType.ERROR:
+            print("WebSocket connection closed with exception: %s" % ws.exception())
+    print("WebSocket connection closed: %s" % request.remote)
+
+def add_routes(app: web.Application):
     # Redirect / -> /index.html
     app.router.add_route(method = "*", path = "/", handler = lambda request: web.HTTPFound(location = "/index.html"))
+
+    # WebSocket
+    app.add_routes( [ web.get(path = "/ws", handler = websocket_handler) ])
 
     # Serve /* from www/*
     app.add_routes([ web.static(prefix = "/", path = "www/") ])
 
 async def run_web_server():
     app = web.Application()
-    add_static_routes(app = app)
+    add_routes(app = app)
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner = runner, host = "localhost", port = options.port)
