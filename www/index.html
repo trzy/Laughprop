@@ -17,8 +17,9 @@
         </style>
 
         <script type="text/javascript" src="js/thirdparty/jquery.2.2.0.min.js"></script>
-        <script type="text/javascript" src="js/main.js"></script>
-        <script type="text/javascript">
+        <script type="module" src="js/main.js"></script>
+        <script type="module">
+            import { main } from "./js/main.js";
             $(document).ready(function()
             {
                 main();
