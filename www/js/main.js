@@ -5,12 +5,13 @@
  * Main program module for game front end.
  */
 
+import { generateGameID } from "./modules/game_id.mjs";
 import { HelloMessage, ClientIDMessage, AuthoritativeStateUpdateMessage } from "./modules/messages.mjs";
 
 var g_socket = null;
 var g_clientID = crypto.randomUUID();
 
-function connect_to_backend()
+function connectToBackend()
 {
     var location = window.location;
     var wsUrl = "ws://" + location.hostname + ":" + location.port + "/ws";
@@ -48,10 +49,21 @@ function connect_to_backend()
     };
 }
 
+function onNewGameButtonClicked()
+{
+    $("#GameID").val(generateGameID());
+}
+
+function initUI()
+{
+    $("#NewGameButton").click(function() { onNewGameButtonClicked(); });
+}
+
 function main()
 {
     console.log("SDGame loaded");
-    connect_to_backend();
+    initUI();
+    connectToBackend();
 }
 
 export { main };
