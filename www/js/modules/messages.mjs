@@ -28,4 +28,31 @@ class ClientIDMessage
     }
 }
 
-export { HelloMessage, ClientIDMessage };
+class ClientStateUpdateMessage
+{
+    __id = "ClientStateUpdateMessage";
+    state_json;
+
+    constructor(state_obj)
+    {
+        this.state_json = JSON.stringify(state_obj);
+    }
+}
+
+class AuthoritativeStateUpdateMessage
+{
+    __id = "AuthoritativeStateUpdateMessage";
+    state_json;
+
+    get state()
+    {
+        return JSON.parse(this.state_json);
+    }
+
+    constructor(state_obj)
+    {
+        this.state_json = JSON.stringify(state_obj);
+    }
+}
+
+export { HelloMessage, ClientIDMessage, ClientStateUpdateMessage, AuthoritativeStateUpdateMessage };

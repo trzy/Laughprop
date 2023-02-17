@@ -5,9 +5,10 @@
  * Main program module for game front end.
  */
 
-import { HelloMessage } from "./modules/messages.mjs";
+import { HelloMessage, ClientIDMessage, AuthoritativeStateUpdateMessage } from "./modules/messages.mjs";
 
 var g_socket = null;
+var g_clientID = crypto.randomUUID();
 
 function connect_to_backend()
 {
@@ -21,6 +22,7 @@ function connect_to_backend()
     {
         console.log("Connection established");
         g_socket.send(JSON.stringify(new HelloMessage("Hello from client")));
+        g_socket.send(JSON.stringify(new ClientIDMessage(g_clientID)));
     };
 
     g_socket.onmessage = function(event)

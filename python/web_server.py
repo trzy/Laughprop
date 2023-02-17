@@ -12,6 +12,7 @@ import aiohttp
 from aiohttp import web
 import mimetypes
 import time
+import weakref
 
 from .web.image_dispatcher import ImageDispatcherTask
 from .networking.message_handling import MessageHandler
@@ -33,12 +34,23 @@ from .networking.serialization import LaserTagJSONEncoder
 class WebMessageHandler(MessageHandler):
     def __init__(self):
         super().__init__()
+        self._ws_by_client_id = {}  # store client WebSockets
+        self._client_id_by_ws = {}
 
     @handler(HelloMessage)
     async def handle_HelloMessage(self, session: web.WebSocketResponse, msg: HelloMessage, timestamp: float):
         print("Hello received from a web client: %s" % msg.message)
         response = HelloMessage(message = "Hello from web server")
         await session.send_str(LaserTagJSONEncoder().encode(response))
+    
+    @handler(ClientIDMessage)
+    async def handle_ClientIDMessage(self, session: web.WebSocketResponse, msg: ClientIDMessage, timestamp: float):
+        # Establish WebSocket <-> client ID mapping
+        print("New client ID: " + msg.client_id)
+        ws = weakref.ref(session)
+        self._ws_by_client_id[msg.client_id] = ws
+        self._client_id_by_ws[ws] = msg.client_id
+
 
 
 ###############################################################################
