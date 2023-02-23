@@ -13,23 +13,34 @@
 
         <style>
             body    { background-color: #60a }
-            .title  { text-align: center; font-size: 10vw; font-weight: bold; color: whitesmoke; }
+            .title  { text-align: center; font-size: 10vw; font-weight: bold; color: whitesmoke; clear: both; }
             .hidden { display: none; }
             .left   { float: left; }
 
+            .message
+                    {
+                        clear: both;
+                        margin: auto;
+                        width: 100%;
+                        text-align: center;
+                        font-weight: bold;
+                        font-size: 5vw;
+                        color: #e0f;
+                    }
+
             #GameID
-                    { 
+                    {
                         margin-left: 2.5%;
                         margin-right: 2.5%;
-                        width: 25%; 
-                        height: 5vw; 
-                        background-color: #888; 
-                        text-align: center; 
-                        font-size: 5vw; 
-                        font-weight: bold; 
-                        color: black; 
+                        width: 25%;
+                        height: 5vw;
+                        background-color: #888;
+                        text-align: center;
+                        font-size: 5vw;
+                        font-weight: bold;
+                        color: black;
                     }
-            #NewGameButton 
+            #NewGameButton
                     {
                         margin-left: 2.5%;
                         margin-right: 2.5%;
@@ -50,7 +61,6 @@
         <script type="text/javascript" src="js/thirdparty/jquery.2.2.0.min.js"></script>
         <script type="module">
             import { main } from "./js/main.js";
-            import { generateGameID } from "./js/modules/game_id.mjs";
             $(document).ready(function()
             {
                 main();
@@ -61,10 +71,20 @@
 
     <body>
 
-        <div class="title">SDGame!</div>
+        <!-- Select Game -->
+        <div id="WelcomeScreen" class="screen hidden">  <!-- "screen" class tag must be present on all top-level UI screens -->
 
-        <input type="text" id="GameID" class="left"></input>
-        <div id="NewGameButton" class="left">New Game</div>
+            <div class="title">SDGame!</div>
+
+            <input type="text" id="GameID" class="left"></input>
+            <div id="Buttons">
+                <div id="NewGameButton" class="left">New Game</div>
+            </div>
+            <div id="StartingNewGameMessage" class="message">
+                <span>Starting new game...</span>
+            </div>
+
+        </div>
 
     </body>
 </html>

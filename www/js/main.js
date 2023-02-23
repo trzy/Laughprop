@@ -5,16 +5,18 @@
  * Main program module for game front end.
  */
 
-import { generateGameID } from "./modules/game_id.mjs";
-import { HelloMessage, ClientIDMessage, AuthoritativeStateUpdateMessage } from "./modules/messages.mjs";
+import { HelloMessage, ClientIDMessage, StartNewGameMessage } from "./modules/messages.mjs";
+import { WelcomeScreen } from "./modules/screens/welcome.mjs";
 
 var g_socket = null;
-var g_clientID = crypto.randomUUID();
+var g_clientId = crypto.randomUUID();
+var g_currentScreen = null;
+var g_currentGameId = null;
 
 function connectToBackend()
 {
-    var location = window.location;
-    var wsUrl = "ws://" + location.hostname + ":" + location.port + "/ws";
+    let location = window.location;
+    let wsUrl = "ws://" + location.hostname + ":" + location.port + "/ws";
 
     console.log(`Connecting to backend socket: ${wsUrl}`)
     g_socket = new WebSocket(wsUrl);
@@ -23,7 +25,7 @@ function connectToBackend()
     {
         console.log("Connection established");
         g_socket.send(JSON.stringify(new HelloMessage("Hello from client")));
-        g_socket.send(JSON.stringify(new ClientIDMessage(g_clientID)));
+        g_socket.send(JSON.stringify(new ClientIDMessage(g_clientId)));
     };
 
     g_socket.onmessage = function(event)
@@ -49,20 +51,34 @@ function connectToBackend()
     };
 }
 
-function onNewGameButtonClicked()
+function sendMessage(msg)
 {
-    $("#GameID").val(generateGameID());
+    if (g_socket)
+    {
+        g_socket.send(JSON.stringify(msg));
+    }
+    else
+    {
+        console.log("Error: Unable to send message because no connection exists:", msg);
+    }
 }
 
-function initUI()
+function onNewGame(gameId)
 {
-    $("#NewGameButton").click(function() { onNewGameButtonClicked(); });
+    // Ask server to start a new game and set our current game to this new ID
+    g_currentGameId = gameId;
+    sendMessage(new StartNewGameMessage(gameId));
+}
+
+function onJoinGame(gameId)
+{
+    console.log("Error: onJoinGame not yet implemented");
 }
 
 function main()
 {
     console.log("SDGame loaded");
-    initUI();
+    g_currentScreen = new WelcomeScreen(onNewGame, onJoinGame);
     connectToBackend();
 }
 

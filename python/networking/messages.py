@@ -18,6 +18,15 @@ class ClientIDMessage:
     client_id: str
 
 @dataclass
+class StartNewGameMessage:
+    game_id: str
+
+@dataclass
+class ClientSnapshotMessage:
+    game_id: str
+    client_ids: List[str]
+
+@dataclass
 class ClientStateUpdateMessage:
     state_json: str
 

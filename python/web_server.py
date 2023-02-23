@@ -12,6 +12,7 @@ import aiohttp
 from aiohttp import web
 import mimetypes
 import time
+from typing import Tuple
 import weakref
 
 from .web.image_dispatcher import ImageDispatcherTask
@@ -26,7 +27,7 @@ from .networking.serialization import LaserTagJSONEncoder
 # Web Message Handling
 #
 # MessageHandler interface is used but there is no true concept of sessions
-# or connections here. The connect/disconnect handlers are never fired and 
+# or connections here. The connect/disconnect handlers are never fired and
 # session in message handlers is set to the WebSocketResponse object associated
 # with the message.
 ###############################################################################
@@ -36,13 +37,25 @@ class WebMessageHandler(MessageHandler):
         super().__init__()
         self._ws_by_client_id = {}  # store client WebSockets
         self._client_id_by_ws = {}
+        self._client_ids_by_game_id = {}
+
+    def remove_session(self, session: web.WebSocketResponse):
+        ws = weakref.ref(session)
+        client_id = self._client_id_by_ws.get(ws)
+        if client_id is not None:
+            # Remove WebSocket <-> client ID mapping and remove from on-going games
+            del self._client_id_by_ws[ws]
+            if client_id in self._ws_by_client_id:
+                del self._ws_by_client_id[client_id]
+                print("Removed client ID: " + client_id)
+            self._remove_from_games(client_id = client_id)
 
     @handler(HelloMessage)
     async def handle_HelloMessage(self, session: web.WebSocketResponse, msg: HelloMessage, timestamp: float):
         print("Hello received from a web client: %s" % msg.message)
         response = HelloMessage(message = "Hello from web server")
         await session.send_str(LaserTagJSONEncoder().encode(response))
-    
+
     @handler(ClientIDMessage)
     async def handle_ClientIDMessage(self, session: web.WebSocketResponse, msg: ClientIDMessage, timestamp: float):
         # Establish WebSocket <-> client ID mapping
@@ -51,6 +64,49 @@ class WebMessageHandler(MessageHandler):
         self._ws_by_client_id[msg.client_id] = ws
         self._client_id_by_ws[ws] = msg.client_id
 
+    @handler(StartNewGameMessage)
+    async def handle_StartNewGameMessage(self, session: web.WebSocketResponse, msg: StartNewGameMessage, timestamp: float):
+        client_id = self._lookup_client_id(session = session)
+        print("Request to start new game received. Client ID = %s, Game ID = %s" % (client_id, msg.game_id))
+        if client_id is None:
+            print("Error: Client ID %s not found" % client_id)
+            return
+
+        # Does this game already exist?
+        if msg.game_id in self._client_ids_by_game_id:
+            print("Error: Game ID %s already exists" % msg.game_id)
+            return
+
+        # Create new game and send back client snapshot
+        self._client_ids_by_game_id[msg.game_id] = set([ client_id ])
+        await self._send_client_snapshot(msg.game_id)
+
+    def _lookup_client_id(self, session: web.WebSocketResponse) -> str:
+        return self._client_id_by_ws[weakref.ref(session)]
+
+    async def _send_message(self, client_id: str, msg):
+        ws = self._ws_by_client_id.get(client_id)
+        if ws is None:
+            return
+        session = ws()
+        if session is not None:
+            await session.send_str(LaserTagJSONEncoder().encode(msg))
+
+    async def _send_client_snapshot(self, game_id: str):
+        client_ids = self._client_ids_by_game_id.get(game_id)
+        if client_ids is not None:
+            msg = ClientSnapshotMessage(game_id = game_id, client_ids = list(client_ids))
+            for client_id in client_ids:
+                await self._send_message(client_id = client_id, msg = msg)
+
+    def _remove_from_games(self, client_id: str):
+        for _, client_ids in self._client_ids_by_game_id.items():
+            if client_id in client_ids:
+                client_ids.remove(client_id)
+        self._purge_dead_games()
+
+    def _purge_dead_games(self):
+        self._client_ids_by_game_id = { game_id: client_ids for game_id, client_ids in self._client_ids_by_game_id.items() if len(client_ids) > 0 }
 
 
 ###############################################################################
@@ -70,6 +126,7 @@ async def websocket_handler(request: web.Request):
                 await message_handler.handle_message(session = ws, json_string = msg.data, timestamp = time.time())
         elif msg.type == aiohttp.WSMsgType.ERROR:
             print("WebSocket connection closed with exception: %s" % ws.exception())
+            message_handler.remove_session(session = ws)
     print("WebSocket connection closed: %s" % request.remote)
 
 def add_routes(app: web.Application):

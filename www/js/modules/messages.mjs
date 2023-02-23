@@ -28,6 +28,24 @@ class ClientIDMessage
     }
 }
 
+class StartNewGameMessage
+{
+    __id = "StartNewGameMessage";
+    game_id;
+
+    constructor(game_id)
+    {
+        this.game_id = game_id;
+    }
+}
+
+class ClientSnapshotMessage
+{
+    __id = "ClientSnapshotMessage";
+    game_id;
+    client_ids;
+}
+
 class ClientStateUpdateMessage
 {
     __id = "ClientStateUpdateMessage";
@@ -55,4 +73,4 @@ class AuthoritativeStateUpdateMessage
     }
 }
 
-export { HelloMessage, ClientIDMessage, ClientStateUpdateMessage, AuthoritativeStateUpdateMessage };
+export { HelloMessage, ClientIDMessage, StartNewGameMessage, ClientStateUpdateMessage, AuthoritativeStateUpdateMessage };

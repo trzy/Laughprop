@@ -5,7 +5,7 @@
  * Functions for generating a unique game ID.
  */
 
-function generateGameID()
+function generateGameId()
 {
     let result = "";
     const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -18,4 +18,4 @@ function generateGameID()
     return result;
 }
 
-export { generateGameID }
+export { generateGameId }
