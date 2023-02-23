@@ -5,7 +5,7 @@
  * Main program module for game front end.
  */
 
-import { HelloMessage, ClientIDMessage, StartNewGameMessage } from "./modules/messages.mjs";
+import { tryConstructMessageFromDictionary, HelloMessage, ClientIDMessage, StartNewGameMessage, ClientSnapshotMessage } from "./modules/messages.mjs";
 import { WelcomeScreen } from "./modules/screens/welcome.mjs";
 
 var g_socket = null;
@@ -24,13 +24,22 @@ function connectToBackend()
     g_socket.onopen = function(event)
     {
         console.log("Connection established");
-        g_socket.send(JSON.stringify(new HelloMessage("Hello from client")));
-        g_socket.send(JSON.stringify(new ClientIDMessage(g_clientId)));
+        sendMessage(new HelloMessage("Hello from client"));
+        sendMessage(new ClientIDMessage(g_clientId));
     };
 
     g_socket.onmessage = function(event)
     {
-        console.log(`Data received: ${event.data}`);
+        console.log(`Message received: ${event.data}`);
+        let msg = tryConstructMessageFromDictionary(JSON.parse(event.data));
+        if (msg != null)
+        {
+            console.log(`Successfully decoded ${msg.__id}`);
+        }
+        else
+        {
+            console.log("Unable to decode message");
+        }
     };
 
     g_socket.onclose = function(event)

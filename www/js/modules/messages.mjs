@@ -6,14 +6,48 @@
  * carefully in sync with their Python counterparts in python/networking/messages.py!
  */
 
+
+function tryConstructMessageFromDictionary(dictionary)
+{
+    if (!("__id" in dictionary))
+    {
+        console.log("Error: Unable to construct message object because dictionary lacks __id field:", dictionary);
+        return null;
+    }
+
+    switch (dictionary["__id"])
+    {
+    default:
+        console.log("Error: Unable to construct message of type: " + dictionary["__id"]);
+        break;
+    case "HelloMessage":
+        return new HelloMessage(dictionary);
+    case "ClientSnapshotMessage":
+        return new ClientSnapshotMessage(dictionary);
+    }
+
+    return null;
+}
+
 class HelloMessage
 {
     __id = "HelloMessage";
     message;
 
-    constructor(message)
+    constructor(message_or_dictionary)
     {
-        this.message = message;
+        if (typeof(message_or_dictionary) == "object")
+        {
+            this.message = message_or_dictionary["message"];
+        }
+        else if (typeof(message_or_dictionary) == "string")
+        {
+            this.message = message_or_dictionary;
+        }
+        else
+        {
+            this.message = null;
+        }
     }
 }
 
@@ -44,6 +78,12 @@ class ClientSnapshotMessage
     __id = "ClientSnapshotMessage";
     game_id;
     client_ids;
+
+    constructor(dictionary)
+    {
+        this.game_id = dictionary["game_id"];
+        this.client_ids = dictionary["client_ids"];
+    }
 }
 
 class ClientStateUpdateMessage
@@ -73,4 +113,4 @@ class AuthoritativeStateUpdateMessage
     }
 }
 
-export { HelloMessage, ClientIDMessage, StartNewGameMessage, ClientStateUpdateMessage, AuthoritativeStateUpdateMessage };
+export { tryConstructMessageFromDictionary, HelloMessage, ClientIDMessage, StartNewGameMessage, ClientSnapshotMessage, ClientStateUpdateMessage, AuthoritativeStateUpdateMessage };
