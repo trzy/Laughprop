@@ -22,6 +22,8 @@ function tryConstructMessageFromDictionary(dictionary)
         break;
     case "HelloMessage":
         return new HelloMessage(dictionary);
+    case "UnknownGameMessage":
+        return new UnknownGameMessage(dictionary);
     case "ClientSnapshotMessage":
         return new ClientSnapshotMessage(dictionary);
     }
@@ -73,6 +75,28 @@ class StartNewGameMessage
     }
 }
 
+class JoinGameMessage
+{
+    __id = "JoinGameMessage";
+    game_id;
+
+    constructor(game_id)
+    {
+        this.game_id = game_id;
+    }
+}
+
+class UnknownGameMessage
+{
+    __id = "UnknownGameMessage";
+    game_id;
+
+    constructor(dictionary)
+    {
+        this.game_id = dictionary["game_id"];
+    }
+}
+
 class ClientSnapshotMessage
 {
     __id = "ClientSnapshotMessage";
@@ -113,4 +137,15 @@ class AuthoritativeStateUpdateMessage
     }
 }
 
-export { tryConstructMessageFromDictionary, HelloMessage, ClientIDMessage, StartNewGameMessage, ClientSnapshotMessage, ClientStateUpdateMessage, AuthoritativeStateUpdateMessage };
+export
+{
+    tryConstructMessageFromDictionary,
+    HelloMessage,
+    ClientIDMessage,
+    StartNewGameMessage,
+    JoinGameMessage,
+    UnknownGameMessage,
+    ClientSnapshotMessage,
+    ClientStateUpdateMessage,
+    AuthoritativeStateUpdateMessage
+};

@@ -17,17 +17,6 @@
             .hidden { display: none; }
             .left   { float: left; }
 
-            .message
-                    {
-                        clear: both;
-                        margin: auto;
-                        width: 100%;
-                        text-align: center;
-                        font-weight: bold;
-                        font-size: 5vw;
-                        color: #e0f;
-                    }
-
             /*
              * WelcomeScreen
              */
@@ -43,6 +32,22 @@
                         font-size: 5vw;
                         font-weight: bold;
                         color: black;
+                    }
+
+            #WelcomeScreen .message
+                    {
+                        clear: both;
+                        margin: auto;
+                        width: 100%;
+                        text-align: center;
+                        font-weight: bold;
+                        font-size: 5vw;
+                        color: #e0f;
+                    }
+
+            #WelcomeScreen .error
+                    {
+                        color: #e00;
                     }
 
             #WelcomeScreen .button
@@ -87,12 +92,22 @@
             <div class="title">SDGame!</div>
 
             <input type="text" id="GameID" class="left" maxlength="4"></input>
+
             <div id="Buttons">
                 <div id="NewGameButton" class="button left">New Game</div>
                 <div id="JoinGameButton" class="button disabled left">Join</div>
             </div>
+
             <div id="StartingNewGameMessage" class="message">
-                <span>Starting new game...</span>
+                <span>Starting new game. Waiting for at least one more player...</span>
+            </div>
+
+            <div id="JoiningGameMessage" class="message">
+                <span>Joining game...</span>
+            </div>
+
+            <div id="FailedToJoinGameMessage" class="message error">
+                <span>Could not join game! Try again.</span>
             </div>
 
         </div>

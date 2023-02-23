@@ -22,6 +22,14 @@ class StartNewGameMessage:
     game_id: str
 
 @dataclass
+class JoinGameMessage:
+    game_id: str
+
+@dataclass
+class UnknownGameMessage:
+    game_id: str
+
+@dataclass
 class ClientSnapshotMessage:
     game_id: str
     client_ids: List[str]

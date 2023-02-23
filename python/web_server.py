@@ -35,11 +35,11 @@ from .networking.serialization import LaserTagJSONEncoder
 class WebMessageHandler(MessageHandler):
     def __init__(self):
         super().__init__()
-        self._ws_by_client_id = {}  # store client WebSockets
+        self._ws_by_client_id = {}          # store client WebSockets
         self._client_id_by_ws = {}
-        self._client_ids_by_game_id = {}
+        self._client_ids_by_game_id = {}    # set of client IDs indexed by game ID
 
-    def remove_session(self, session: web.WebSocketResponse):
+    async def remove_session(self, session: web.WebSocketResponse):
         ws = weakref.ref(session)
         client_id = self._client_id_by_ws.get(ws)
         if client_id is not None:
@@ -48,7 +48,7 @@ class WebMessageHandler(MessageHandler):
             if client_id in self._ws_by_client_id:
                 del self._ws_by_client_id[client_id]
                 print("Removed client ID: " + client_id)
-            self._remove_from_games(client_id = client_id)
+            await self._remove_from_games(client_id = client_id)
 
     @handler(HelloMessage)
     async def handle_HelloMessage(self, session: web.WebSocketResponse, msg: HelloMessage, timestamp: float):
@@ -67,18 +67,36 @@ class WebMessageHandler(MessageHandler):
     @handler(StartNewGameMessage)
     async def handle_StartNewGameMessage(self, session: web.WebSocketResponse, msg: StartNewGameMessage, timestamp: float):
         client_id = self._lookup_client_id(session = session)
-        print("Request to start new game received. Client ID = %s, Game ID = %s" % (client_id, msg.game_id))
         if client_id is None:
-            print("Error: Client ID %s not found" % client_id)
+            print("Error: Ignoring StartNewGameMessage because client ID not found for session")
             return
+        print("Request to start new game received. Client ID = %s, Game ID = %s." % (client_id, msg.game_id))
 
         # Does this game already exist?
-        if msg.game_id in self._client_ids_by_game_id:
+        if self._game_exists(msg.game_id):
             print("Error: Game ID %s already exists" % msg.game_id)
             return
 
-        # Create new game and send back client snapshot
+        # Create new game and send client snapshot
         self._client_ids_by_game_id[msg.game_id] = set([ client_id ])
+        await self._send_client_snapshot(msg.game_id)
+
+    @handler(JoinGameMessage)
+    async def handle_JoinGameMessage(self, session: web.WebSocketResponse, msg: StartNewGameMessage, timestamp: float):
+        client_id = self._lookup_client_id(session = session)
+        if client_id is None:
+            print("Error: Ignoring JoinGameMessage because client ID not found for session")
+            return
+        print("Request to join game received. Client ID = %s, Game ID = %s." % (client_id, msg.game_id))
+
+        # Does the game exist?
+        if not self._game_exists(msg.game_id):
+            print("Error: Client ID %s cannot join game ID %s because that game does not exist" % (client_id, msg.game_id))
+            await self._send_message(client_id = client_id, msg = UnknownGameMessage(game_id = msg.game_id))
+            return
+
+        # Add to game and send client snapshot
+        self._client_ids_by_game_id[msg.game_id].add(client_id)
         await self._send_client_snapshot(msg.game_id)
 
     def _lookup_client_id(self, session: web.WebSocketResponse) -> str:
@@ -99,14 +117,27 @@ class WebMessageHandler(MessageHandler):
             for client_id in client_ids:
                 await self._send_message(client_id = client_id, msg = msg)
 
-    def _remove_from_games(self, client_id: str):
-        for _, client_ids in self._client_ids_by_game_id.items():
+    async def _remove_from_games(self, client_id: str):
+        # Remove from games
+        game_ids_modified = []
+        for game_id, client_ids in self._client_ids_by_game_id.items():
             if client_id in client_ids:
                 client_ids.remove(client_id)
+                game_ids_modified.append(game_id)
+
+        # Purge dead games entirely
         self._purge_dead_games()
+
+        # Broadcast client snapshot if game IDs still have some clients
+        for game_id in game_ids_modified:
+            if self._game_exists(game_id):
+                await self._send_client_snapshot(game_id)
 
     def _purge_dead_games(self):
         self._client_ids_by_game_id = { game_id: client_ids for game_id, client_ids in self._client_ids_by_game_id.items() if len(client_ids) > 0 }
+
+    def _game_exists(self, game_id: str):
+        return game_id in self._client_ids_by_game_id
 
 
 ###############################################################################
@@ -126,8 +157,9 @@ async def websocket_handler(request: web.Request):
                 await message_handler.handle_message(session = ws, json_string = msg.data, timestamp = time.time())
         elif msg.type == aiohttp.WSMsgType.ERROR:
             print("WebSocket connection closed with exception: %s" % ws.exception())
-            message_handler.remove_session(session = ws)
+            await message_handler.remove_session(session = ws)
     print("WebSocket connection closed: %s" % request.remote)
+    await message_handler.remove_session(session = ws)
 
 def add_routes(app: web.Application):
     # Redirect / -> /index.html

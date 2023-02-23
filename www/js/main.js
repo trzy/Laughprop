@@ -5,7 +5,7 @@
  * Main program module for game front end.
  */
 
-import { tryConstructMessageFromDictionary, HelloMessage, ClientIDMessage, StartNewGameMessage, ClientSnapshotMessage } from "./modules/messages.mjs";
+import { tryConstructMessageFromDictionary, HelloMessage, ClientIDMessage, StartNewGameMessage, JoinGameMessage } from "./modules/messages.mjs";
 import { WelcomeScreen } from "./modules/screens/welcome.mjs";
 
 var g_socket = null;
@@ -86,7 +86,9 @@ function onNewGame(gameId)
 
 function onJoinGame(gameId)
 {
-    console.log("Error: onJoinGame not yet implemented");
+    // Try to join existing game
+    g_currentGameId = null;
+    sendMessage(new JoinGameMessage(gameId));
 }
 
 function main()
