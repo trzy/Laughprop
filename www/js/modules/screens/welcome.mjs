@@ -6,12 +6,23 @@
  * game to be joined.
  */
 
+import { UIScreen } from "./ui_screen.mjs";
 import { generateGameId } from "../game_id.mjs";
+import { ClientSnapshotMessage } from "../messages.mjs";
 
-class WelcomeScreen
+class WelcomeScreen extends UIScreen
 {
     _onNewGame;
     _onJoinGame;
+
+    onMessageReceived(msg)
+    {
+        if (msg instanceof ClientSnapshotMessage)
+        {
+            // TODO: When the number of clients exceeds 2, send a message to advance the state
+            console.log("Current number of clients: " + msg.client_ids.length);
+        }
+    }
 
     onNewGameButtonClicked()
     {
@@ -24,6 +35,7 @@ class WelcomeScreen
 
     constructor(onNewGame, onJoinGame)
     {
+        super();
         var self = this;
         this._onNewGame = onNewGame;
         this._onJoinGame = onJoinGame;

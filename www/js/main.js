@@ -34,7 +34,12 @@ function connectToBackend()
         let msg = tryConstructMessageFromDictionary(JSON.parse(event.data));
         if (msg != null)
         {
+            // Pass to current UIScreen for handling
             console.log(`Successfully decoded ${msg.__id}`);
+            if (g_currentScreen != null)
+            {
+                g_currentScreen.onMessageReceived(msg);
+            }
         }
         else
         {
