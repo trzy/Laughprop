@@ -28,6 +28,10 @@
                         color: #e0f;
                     }
 
+            /*
+             * WelcomeScreen
+             */
+
             #GameID
                     {
                         margin-left: 2.5%;
@@ -40,7 +44,8 @@
                         font-weight: bold;
                         color: black;
                     }
-            #NewGameButton
+
+            #WelcomeScreen .button
                     {
                         margin-left: 2.5%;
                         margin-right: 2.5%;
@@ -56,6 +61,12 @@
                         outline-color: white;
                         border-radius: 10px;
                     }
+
+             #WelcomeScreen .disabled
+                    {
+                        background-color: #888;
+                    }
+
         </style>
 
         <script type="text/javascript" src="js/thirdparty/jquery.2.2.0.min.js"></script>
@@ -70,15 +81,15 @@
     </head>
 
     <body>
-
         <!-- Select Game -->
         <div id="WelcomeScreen" class="screen hidden">  <!-- "screen" class tag must be present on all top-level UI screens -->
 
             <div class="title">SDGame!</div>
 
-            <input type="text" id="GameID" class="left"></input>
+            <input type="text" id="GameID" class="left" maxlength="4"></input>
             <div id="Buttons">
-                <div id="NewGameButton" class="left">New Game</div>
+                <div id="NewGameButton" class="button left">New Game</div>
+                <div id="JoinGameButton" class="button disabled left">Join</div>
             </div>
             <div id="StartingNewGameMessage" class="message">
                 <span>Starting new game...</span>

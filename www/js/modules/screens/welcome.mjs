@@ -15,6 +15,13 @@ class WelcomeScreen extends UIScreen
     _onNewGame;
     _onJoinGame;
 
+    _gameIdField;
+    _buttonsContainer;
+    _newGameButton;
+    _joinGameButton;
+    _startingNewGameMessage;
+
+
     onMessageReceived(msg)
     {
         if (msg instanceof ClientSnapshotMessage)
@@ -28,20 +35,57 @@ class WelcomeScreen extends UIScreen
     {
         var gameId = generateGameId();
         this._onNewGame(gameId);
-        $("#WelcomeScreen #GameID").val(gameId);
-        $("#WelcomeScreen #Buttons").hide();
-        $("#WelcomeScreen #StartingNewGameMessage").show();
+        this._gameIdField.val(gameId);
+        this._buttonsContainer.hide();
+        this._startingNewGameMessage.show();
+    }
+
+    onJoinGameButtonClicked()
+    {
+        console.log("Join game: " + this._gameIdField.val());
+    }
+
+    onGameIdTextFieldChanged(e)
+    {
+        e.target.value = e.target.value.toUpperCase();
+        if (e.target.value.length == 4)
+        {
+            // Join button becomes selectable when we have 4 characters
+            let self = this;
+            this._joinGameButton.removeClass("disabled");
+            this._joinGameButton.off("click").click(function() { self.onJoinGameButtonClicked() });
+        }
+        else
+        {
+            this._joinGameButton.addClass("disabled");
+            this._joinGameButton.off("click");
+        }
     }
 
     constructor(onNewGame, onJoinGame)
     {
         super();
-        var self = this;
+        let self = this;
+
         this._onNewGame = onNewGame;
         this._onJoinGame = onJoinGame;
-        $("#WelcomeScreen #NewGameButton").off("click").click(function() { self.onNewGameButtonClicked() });
-        $("#WelcomeScreen #Buttons").show();
-        $("#WelcomeScreen #StartingNewGameMessage").hide();
+        this._gameIdField = $("#WelcomeScreen #GameID");
+        this._buttonsContainer = $("#WelcomeScreen #Buttons");
+        this._newGameButton = $("#WelcomeScreen #NewGameButton");
+        this._joinGameButton = $("#WelcomeScreen #JoinGameButton")
+        this._startingNewGameMessage = $("#WelcomeScreen #StartingNewGameMessage");
+
+        this._gameIdField.val("");
+        this._gameIdField.off("input").on("input", function(e) { self.onGameIdTextFieldChanged(e); });
+
+        this._newGameButton.off("click").click(function() { self.onNewGameButtonClicked() });
+
+        this._joinGameButton.addClass("disabled");
+
+        this._buttonsContainer.show();
+
+        this._startingNewGameMessage.hide();
+
         $("#WelcomeScreen").show();
     }
 }
