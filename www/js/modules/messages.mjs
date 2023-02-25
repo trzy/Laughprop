@@ -21,11 +21,13 @@ function tryConstructMessageFromDictionary(dictionary)
         console.log("Error: Unable to construct message of type: " + dictionary["__id"]);
         break;
     case "HelloMessage":
-        return new HelloMessage(dictionary);
+        return HelloMessage.fromDictionary(dictionary);
     case "UnknownGameMessage":
-        return new UnknownGameMessage(dictionary);
+        return UnknownGameMessage.fromDictionary(dictionary);
     case "ClientSnapshotMessage":
-        return new ClientSnapshotMessage(dictionary);
+        return ClientSnapshotMessage.fromDictionary(dictionary);
+    case "AuthoritativeStateMessage":
+        return AuthoritativeStateMessage.fromDictionary(dictionary);
     }
 
     return null;
@@ -36,20 +38,20 @@ class HelloMessage
     __id = "HelloMessage";
     message;
 
-    constructor(message_or_dictionary)
+    static fromDictionary(dictionary)
     {
-        if (typeof(message_or_dictionary) == "object")
+        let msg = new HelloMessage(null);
+        msg.message = dictionary["message"];
+        return msg;
+    }
+
+    constructor(message)
+    {
+        if (!message)
         {
-            this.message = message_or_dictionary["message"];
+            return;
         }
-        else if (typeof(message_or_dictionary) == "string")
-        {
-            this.message = message_or_dictionary;
-        }
-        else
-        {
-            this.message = null;
-        }
+        this.message = message;
     }
 }
 
@@ -91,9 +93,11 @@ class UnknownGameMessage
     __id = "UnknownGameMessage";
     game_id;
 
-    constructor(dictionary)
+    static fromDictionary(dictionary)
     {
-        this.game_id = dictionary["game_id"];
+        let msg = new UnknownGameMessage();
+        msg.game_id = dictionary["game_id"];
+        return msg;
     }
 }
 
@@ -103,37 +107,42 @@ class ClientSnapshotMessage
     game_id;
     client_ids;
 
-    constructor(dictionary)
+    static fromDictionary(dictionary)
     {
-        this.game_id = dictionary["game_id"];
-        this.client_ids = dictionary["client_ids"];
+        let msg = new ClientSnapshotMessage();
+        msg.game_id = dictionary["game_id"];
+        msg.client_ids = dictionary["client_ids"];
+        return msg;
     }
 }
 
-class ClientStateUpdateMessage
+class AuthoritativeStateMessage
 {
-    __id = "ClientStateUpdateMessage";
-    state_json;
+    __id = "AuthoritativeStateMessage";
+    screen;
+    state_params_json;
 
-    constructor(state_obj)
+    get state_params()
     {
-        this.state_json = JSON.stringify(state_obj);
-    }
-}
-
-class AuthoritativeStateUpdateMessage
-{
-    __id = "AuthoritativeStateUpdateMessage";
-    state_json;
-
-    get state()
-    {
-        return JSON.parse(this.state_json);
+        return JSON.parse(this.state_params_json);
     }
 
-    constructor(state_obj)
+    static fromDictionary(dictionary)
     {
-        this.state_json = JSON.stringify(state_obj);
+        let msg = new AuthoritativeStateMessage(null);
+        msg.screen = dictionary["screen"];
+        msg.state_params_json = dictionary["state_params_json"];
+        return msg;
+    }
+
+    constructor(screen, state_params_obj)
+    {
+        if (!screen)
+        {
+            return;
+        }
+        this.screen = screen;
+        this.state_params_json = JSON.stringify(state_params_obj);
     }
 }
 
@@ -146,6 +155,5 @@ export
     JoinGameMessage,
     UnknownGameMessage,
     ClientSnapshotMessage,
-    ClientStateUpdateMessage,
-    AuthoritativeStateUpdateMessage
+    AuthoritativeStateMessage
 };

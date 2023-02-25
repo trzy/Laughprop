@@ -14,7 +14,8 @@
         <style>
             body    { background-color: #60a }
             .title  { text-align: center; font-size: 10vw; font-weight: bold; color: whitesmoke; clear: both; }
-            .hidden { display: none; }
+            .subtitle   { text-align: center; font-size: 8vw; font-weight: bold; color: #ee0; clear: both; }
+            .hidden { display: none; }  /* compatible with using JQuery's hide()/show() */
             .left   { float: left; }
 
             /*
@@ -72,6 +73,11 @@
                         background-color: #888;
                     }
 
+            /*
+             * SelectGameScreen
+             */
+
+
         </style>
 
         <script type="text/javascript" src="js/thirdparty/jquery.2.2.0.min.js"></script>
@@ -86,12 +92,12 @@
     </head>
 
     <body>
-        <!-- Select Game -->
+        <div class="title">SDGame!</div>
+
+        <!-- Welcome -->
         <div id="WelcomeScreen" class="screen hidden">  <!-- "screen" class tag must be present on all top-level UI screens -->
 
-            <div class="title">SDGame!</div>
-
-            <input type="text" id="GameID" class="left" maxlength="4"></input>
+            <input id="GameID" type="text" class="left" maxlength="4"/>
 
             <div id="Buttons">
                 <div id="NewGameButton" class="button left">New Game</div>
@@ -110,6 +116,16 @@
                 <span>Could not join game! Try again.</span>
             </div>
 
+        </div>
+
+        <!-- Select Game -->
+        <div id="SelectGameScreen" class="screen hidden">
+
+            <div class="subtitle">
+                <span>Select Game</span>
+            </div>
+
+            <input id="GameID" type="text" class="left" maxlength="4" />
         </div>
 
     </body>

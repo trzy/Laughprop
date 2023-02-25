@@ -48,7 +48,9 @@ class WebMessageHandler(MessageHandler):
             if client_id in self._ws_by_client_id:
                 del self._ws_by_client_id[client_id]
                 print("Removed client ID: " + client_id)
-            await self._remove_from_games(client_id = client_id)
+            game_ids_modified = self._remove_from_games(client_id = client_id)
+            self._purge_dead_games()
+            await self._send_client_snapshots(game_ids = game_ids_modified)
 
     @handler(HelloMessage)
     async def handle_HelloMessage(self, session: web.WebSocketResponse, msg: HelloMessage, timestamp: float):
@@ -66,7 +68,7 @@ class WebMessageHandler(MessageHandler):
 
     @handler(StartNewGameMessage)
     async def handle_StartNewGameMessage(self, session: web.WebSocketResponse, msg: StartNewGameMessage, timestamp: float):
-        client_id = self._lookup_client_id(session = session)
+        client_id = self._try_lookup_client_id(session = session)
         if client_id is None:
             print("Error: Ignoring StartNewGameMessage because client ID not found for session")
             return
@@ -83,7 +85,7 @@ class WebMessageHandler(MessageHandler):
 
     @handler(JoinGameMessage)
     async def handle_JoinGameMessage(self, session: web.WebSocketResponse, msg: StartNewGameMessage, timestamp: float):
-        client_id = self._lookup_client_id(session = session)
+        client_id = self._try_lookup_client_id(session = session)
         if client_id is None:
             print("Error: Ignoring JoinGameMessage because client ID not found for session")
             return
@@ -95,12 +97,58 @@ class WebMessageHandler(MessageHandler):
             await self._send_message(client_id = client_id, msg = UnknownGameMessage(game_id = msg.game_id))
             return
 
+        # Is client already in a game? If so, remove it so we that a client can only be part of one
+        # game at a time
+        for other_game_id, client_ids in self._client_ids_by_game_id.items():
+            if client_id in client_ids:
+                print("Error: Client ID %s is already part of game ID %s. Removing and joining game ID %s instead." % (client_id, other_game_id, msg.game_id))
+        game_ids_modified = self._remove_from_games(client_id = client_id)
+        self._purge_dead_games()
+
         # Add to game and send client snapshot
         self._client_ids_by_game_id[msg.game_id].add(client_id)
-        await self._send_client_snapshot(msg.game_id)
+        game_ids_modified.append(msg.game_id)
+        await self._send_client_snapshots(game_ids_modified)
 
-    def _lookup_client_id(self, session: web.WebSocketResponse) -> str:
+    @handler(AuthoritativeStateMessage)
+    async def handle_AuthoritativeStateMessage(self, session: web.WebSocketResponse, msg: AuthoritativeStateMessage, timestamp: float):
+        client_id = self._try_lookup_client_id(session = session)
+        game_id = self._try_lookup_game_id(client_id = client_id)
+        if client_id is None:
+            print("Error: Ignoring AuthoritativeStateMessage because client ID not found for session")
+            return
+        if game_id is None:
+            print("Error: Ignoring AuthoritativeStateMessage from client ID %s because it is not part of any current game" % client_id)
+            return
+
+        # If this is not the authoritative client, then discard the message
+        if client_id != self._try_get_authoritative_client_id(game_id = game_id):
+            return
+
+        # Otherwise, forward the message along to everyone, including sender, which will confirm
+        # the state
+        # TODO: retain message and broadcast to any new clients who join the game
+        for id in self._client_ids_by_game_id[game_id]:
+            await self._send_message(client_id = id, msg = msg)
+
+    def _try_lookup_client_id(self, session: web.WebSocketResponse) -> str:
         return self._client_id_by_ws[weakref.ref(session)]
+
+    def _try_lookup_game_id(self, client_id: str) -> str:
+        for game_id, client_ids in self._client_ids_by_game_id.items():
+            if client_id in client_ids:
+                return game_id
+        return None
+
+    def _try_get_authoritative_client_id(self, game_id: str) -> str:
+        # All clients behave as though they are authority but server selects true authority. Just
+        # use first client for now.
+        client_ids = self._client_ids_by_game_id.get(game_id)
+        if client_ids is None:
+            return None
+        client_ids = list(client_ids)
+        client_ids.sort()
+        return client_ids[0] if len(client_ids) > 0 else None
 
     async def _send_message(self, client_id: str, msg):
         ws = self._ws_by_client_id.get(client_id)
@@ -117,19 +165,18 @@ class WebMessageHandler(MessageHandler):
             for client_id in client_ids:
                 await self._send_message(client_id = client_id, msg = msg)
 
-    async def _remove_from_games(self, client_id: str):
+    def _remove_from_games(self, client_id: str) -> List[str]:
         # Remove from games
         game_ids_modified = []
         for game_id, client_ids in self._client_ids_by_game_id.items():
             if client_id in client_ids:
                 client_ids.remove(client_id)
                 game_ids_modified.append(game_id)
+        return game_ids_modified
 
-        # Purge dead games entirely
-        self._purge_dead_games()
-
+    async def _send_client_snapshots(self, game_ids: List[str]):
         # Broadcast client snapshot if game IDs still have some clients
-        for game_id in game_ids_modified:
+        for game_id in set(game_ids):
             if self._game_exists(game_id):
                 await self._send_client_snapshot(game_id)
 

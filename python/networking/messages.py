@@ -35,12 +35,9 @@ class ClientSnapshotMessage:
     client_ids: List[str]
 
 @dataclass
-class ClientStateUpdateMessage:
-    state_json: str
-
-@dataclass
-class AuthorityStateStateUpdateMessage:
-    state_json: str
+class AuthoritativeStateMessage:
+    screen: str
+    state_params_json: str
 
 @dataclass
 class Txt2ImgRequestMessage:

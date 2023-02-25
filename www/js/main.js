@@ -5,8 +5,18 @@
  * Main program module for game front end.
  */
 
-import { tryConstructMessageFromDictionary, HelloMessage, ClientIDMessage, StartNewGameMessage, JoinGameMessage } from "./modules/messages.mjs";
+import
+{
+    tryConstructMessageFromDictionary,
+    HelloMessage,
+    ClientIDMessage,
+    StartNewGameMessage,
+    JoinGameMessage,
+    ClientSnapshotMessage,
+    AuthoritativeStateMessage
+} from "./modules/messages.mjs";
 import { WelcomeScreen } from "./modules/screens/welcome.mjs";
+import { SelectGameScreen } from "./modules/screens/select_game.mjs";
 
 var g_socket = null;
 var g_clientId = crypto.randomUUID();
@@ -34,8 +44,30 @@ function connectToBackend()
         let msg = tryConstructMessageFromDictionary(JSON.parse(event.data));
         if (msg != null)
         {
-            // Pass to current UIScreen for handling
             console.log(`Successfully decoded ${msg.__id}`);
+
+            // Client snapshot messages are special: they tell us which game we are part of
+            if (msg instanceof ClientSnapshotMessage)
+            {
+                if (!msg.client_ids.includes(g_clientId))
+                {
+                    console.log(`Error: Received ClientSnapshotMessage without our own client ID ${g_clientId} in it`);
+                    return;
+                }
+                g_currentGameId = msg.game_id;
+            }
+
+            // Authoritative state messages are special: they are used to create new screens if needed
+            if (msg instanceof AuthoritativeStateMessage)
+            {
+                if (g_currentScreen == null || g_currentScreen.className != msg.screen)
+                {
+                    // Need to destroy current screen and create new one
+                    g_currentScreen = createScreen(msg.screen);
+                }
+            }
+
+            // Pass along to current UIScreen for handling
             if (g_currentScreen != null)
             {
                 g_currentScreen.onMessageReceived(msg);
@@ -65,6 +97,28 @@ function connectToBackend()
     };
 }
 
+function createScreen(name)
+{
+    hideAllScreens();
+
+    switch (name)
+    {
+    case SelectGameScreen.name:
+        return new SelectGameScreen(g_currentGameId, sendMessage);
+    default:
+        console.log("Error: Cannot instantiate unknown UI screen: " + name);
+        return null;
+    }
+}
+
+function hideAllScreens()
+{
+    $(".screen").each(function(index, element)
+    {
+        $(element).hide();
+    });
+}
+
 function sendMessage(msg)
 {
     if (g_socket)
@@ -77,14 +131,14 @@ function sendMessage(msg)
     }
 }
 
-function onNewGame(gameId)
+function onNewGameSelected(gameId)
 {
     // Ask server to start a new game and set our current game to this new ID
     g_currentGameId = gameId;
     sendMessage(new StartNewGameMessage(gameId));
 }
 
-function onJoinGame(gameId)
+function onJoinGameSelected(gameId)
 {
     // Try to join existing game
     g_currentGameId = null;
@@ -94,7 +148,8 @@ function onJoinGame(gameId)
 function main()
 {
     console.log("SDGame loaded");
-    g_currentScreen = new WelcomeScreen(onNewGame, onJoinGame);
+    hideAllScreens();
+    g_currentScreen = new WelcomeScreen(onNewGameSelected, onJoinGameSelected, sendMessage);
     connectToBackend();
 }
 

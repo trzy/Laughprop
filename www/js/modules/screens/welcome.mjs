@@ -7,14 +7,19 @@
  */
 
 import { UIScreen } from "./ui_screen.mjs";
+import { SelectGameScreen } from "./select_game.mjs";
 import { generateGameId } from "../game_id.mjs";
-import { UnknownGameMessage, ClientSnapshotMessage } from "../messages.mjs";
+import { UnknownGameMessage, ClientSnapshotMessage, AuthoritativeStateMessage } from "../messages.mjs";
 
 class WelcomeScreen extends UIScreen
 {
     // Callbacks
-    _onNewGame;
-    _onJoinGame;
+    _onNewGameSelected;
+    _onJoinGameSelected;
+    _sendMessageFn;
+
+    // State
+    _client_ids;
 
     // UI elements
     _gameIdField;
@@ -25,20 +30,37 @@ class WelcomeScreen extends UIScreen
     _joiningGameMessage;
     _failedToJoinGameMessage;
 
+    get className()
+    {
+        return WelcomeScreen.name;
+    }
+
     onMessageReceived(msg)
     {
         if (msg instanceof ClientSnapshotMessage)
         {
-            // TODO: When the number of clients exceeds 2, send a message to advance the state
-            console.log("Current number of clients: " + msg.client_ids.length);
+            this._client_ids = msg.client_ids;
+            console.log("Current number of clients: " + this._client_ids.length);
+            if (this._client_ids.length >= 2)
+            {
+                // Whether joining or starting the game, once we have at least two clients, move on
+                this._sendMessageFn(new AuthoritativeStateMessage(SelectGameScreen.name, {}));
+            }
         }
         else if (msg instanceof UnknownGameMessage)
         {
-            this._joiningGameMessage.hide();
-            this._failedToJoinGameMessage.show();
-            this._buttonsContainer.show();
-            this._gameIdField.val("");          // clear game ID
-            this._onGameIdTextFieldChanged();   // force update to text field
+            if (this._isJoiningGame())
+            {
+                this._joiningGameMessage.hide();
+                this._failedToJoinGameMessage.show();
+                this._buttonsContainer.show();
+                this._gameIdField.val("");          // clear game ID
+                this._onGameIdTextFieldChanged();   // force update to text field
+            }
+            else
+            {
+                console.log(`Error: Received UnknownGameMessage but not in joining state (isStartingNewGame=${this._isStartingNewGame()}):`, msg);
+            }
         }
     }
 
@@ -49,7 +71,7 @@ class WelcomeScreen extends UIScreen
         this._buttonsContainer.hide();
         this._startingNewGameMessage.show();
         this._failedToJoinGameMessage.hide();
-        this._onNewGame(gameId);
+        this._onNewGameSelected(gameId);
     }
 
     _onJoinGameButtonClicked()
@@ -57,7 +79,7 @@ class WelcomeScreen extends UIScreen
         this._buttonsContainer.hide();
         this._joiningGameMessage.show();
         this._failedToJoinGameMessage.hide();
-        this._onJoinGame(this._gameIdField.val());
+        this._onJoinGameSelected(this._gameIdField.val());
     }
 
     _onGameIdTextFieldChanged()
@@ -87,13 +109,17 @@ class WelcomeScreen extends UIScreen
         return this._joiningGameMessage.is(":visible");
     }
 
-    constructor(onNewGame, onJoinGame)
+    constructor(onNewGameSelected, onJoinGameSelected, sendMessageFn)
     {
         super();
         let self = this;
 
-        this._onNewGame = onNewGame;
-        this._onJoinGame = onJoinGame;
+        this._client_ids = [];
+
+        this._onNewGameSelected = onNewGameSelected;
+        this._onJoinGameSelected = onJoinGameSelected;
+        this._sendMessageFn = sendMessageFn;
+
         this._gameIdField = $("#WelcomeScreen #GameID");
         this._buttonsContainer = $("#WelcomeScreen #Buttons");
         this._newGameButton = $("#WelcomeScreen #NewGameButton");
