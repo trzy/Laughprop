@@ -3,6 +3,11 @@
  * Bart Trzynadlowski, 2023
  *
  * Main program module for game front end.
+ *
+ * TODO:
+ * -----
+ * - On disconnect, return to WelcomeScreen and populate game ID field with old game ID, allowing
+ *   users to optionally attempt to reconnect.
  */
 
 import
