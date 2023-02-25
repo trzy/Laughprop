@@ -38,6 +38,7 @@ class WebMessageHandler(MessageHandler):
         self._ws_by_client_id = {}          # store client WebSockets
         self._client_id_by_ws = {}
         self._client_ids_by_game_id = {}    # set of client IDs indexed by game ID
+        self._joined_time_by_client_id = {} # timestamp that each client last joined
 
     async def remove_session(self, session: web.WebSocketResponse):
         ws = weakref.ref(session)
@@ -45,6 +46,8 @@ class WebMessageHandler(MessageHandler):
         if client_id is not None:
             # Remove WebSocket <-> client ID mapping and remove from on-going games
             del self._client_id_by_ws[ws]
+            if client_id in self._joined_time_by_client_id:
+                del self._joined_time_by_client_id[client_id]
             if client_id in self._ws_by_client_id:
                 del self._ws_by_client_id[client_id]
                 print("Removed client ID: " + client_id)
@@ -65,6 +68,7 @@ class WebMessageHandler(MessageHandler):
         ws = weakref.ref(session)
         self._ws_by_client_id[msg.client_id] = ws
         self._client_id_by_ws[ws] = msg.client_id
+        self._joined_time_by_client_id[msg.client_id] = time.time()
 
     @handler(StartNewGameMessage)
     async def handle_StartNewGameMessage(self, session: web.WebSocketResponse, msg: StartNewGameMessage, timestamp: float):
@@ -127,9 +131,24 @@ class WebMessageHandler(MessageHandler):
 
         # Otherwise, forward the message along to everyone, including sender, which will confirm
         # the state
-        # TODO: retain message and broadcast to any new clients who join the game
         for id in self._client_ids_by_game_id[game_id]:
             await self._send_message(client_id = id, msg = msg)
+
+    @handler(PeerStateMessage)
+    async def handle_PeerStateMessage(self, session: web.WebSocketResponse, msg: PeerStateMessage, timestamp: float):
+        client_id = self._try_lookup_client_id(session = session)
+        game_id = self._try_lookup_game_id(client_id = client_id)
+        if client_id is None:
+            print("Error: Ignoring PeerStateMessage because client ID not found for session")
+            return
+        if game_id is None:
+            print("Error: Ignoring PeerStateMessage from client ID %s because it is not part of any current game" % client_id)
+            return
+
+        # Peer state updates are used to inform peers of each others' state. Forward to all peers.
+        for peer_id in self._client_ids_by_game_id[game_id]:
+            if peer_id != client_id:
+                await self._send_message(client_id = peer_id, msg = msg)
 
     def _try_lookup_client_id(self, session: web.WebSocketResponse) -> str:
         return self._client_id_by_ws[weakref.ref(session)]
@@ -141,14 +160,23 @@ class WebMessageHandler(MessageHandler):
         return None
 
     def _try_get_authoritative_client_id(self, game_id: str) -> str:
-        # All clients behave as though they are authority but server selects true authority. Just
-        # use first client for now.
+        # All clients behave as though they are authority but server selects true authority. We use
+        # the *oldest* client as the authority. This ensures that when a new client connects, it
+        # cannot become the authority because it would then be left without the current state. By
+        # using the oldest client still connected, we maximize the chance that it will be able to
+        # disseminate an authoritative state snapshot and bring new clients up to speed.
         client_ids = self._client_ids_by_game_id.get(game_id)
         if client_ids is None:
             return None
-        client_ids = list(client_ids)
-        client_ids.sort()
-        return client_ids[0] if len(client_ids) > 0 else None
+        oldest_client_id = None
+        oldest_timestamp = float("inf")
+        for client_id in client_ids:
+            timestamp = self._joined_time_by_client_id.get(client_id)
+            if timestamp is not None:
+                if timestamp < oldest_timestamp:
+                    oldest_client_id = client_id
+                    oldest_timestamp = timestamp
+        return oldest_client_id
 
     async def _send_message(self, client_id: str, msg):
         ws = self._ws_by_client_id.get(client_id)

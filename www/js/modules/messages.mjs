@@ -28,6 +28,8 @@ function tryConstructMessageFromDictionary(dictionary)
         return ClientSnapshotMessage.fromDictionary(dictionary);
     case "AuthoritativeStateMessage":
         return AuthoritativeStateMessage.fromDictionary(dictionary);
+    case "PeerStateMessage":
+        return PeerStateMessage.fromDictionary(dictionary);
     }
 
     return null;
@@ -120,29 +122,62 @@ class AuthoritativeStateMessage
 {
     __id = "AuthoritativeStateMessage";
     screen;
-    state_params_json;
+    state_json;
 
-    get state_params()
+    get state()
     {
-        return JSON.parse(this.state_params_json);
+        return JSON.parse(this.state_json);
     }
 
     static fromDictionary(dictionary)
     {
         let msg = new AuthoritativeStateMessage(null);
         msg.screen = dictionary["screen"];
-        msg.state_params_json = dictionary["state_params_json"];
+        msg.state_json = dictionary["state_json"];
         return msg;
     }
 
-    constructor(screen, state_params_obj)
+    constructor(screen, state_obj)
     {
         if (!screen)
         {
             return;
         }
         this.screen = screen;
-        this.state_params_json = JSON.stringify(state_params_obj);
+        this.state_json = JSON.stringify(state_obj);
+    }
+}
+
+class PeerStateMessage
+{
+    __id = "PeerStateMessage";
+    from_client_id;
+    screen;
+    state_json;
+
+    get state()
+    {
+        return JSON.parse(this.state_json);
+    }
+
+    static fromDictionary(dictionary)
+    {
+        let msg = new PeerStateMessage(null);
+        msg.from_client_id = dictionary["from_client_id"];
+        msg.screen = dictionary["screen"];
+        msg.state_json = dictionary["state_json"];
+        return msg;
+    }
+
+    constructor(from_client_id, screen, state_obj)
+    {
+        if (!from_client_id)
+        {
+            return;
+        }
+        this.from_client_id = from_client_id;
+        this.screen = screen;
+        this.state_json = JSON.stringify(state_obj);
     }
 }
 
@@ -155,5 +190,6 @@ export
     JoinGameMessage,
     UnknownGameMessage,
     ClientSnapshotMessage,
-    AuthoritativeStateMessage
+    AuthoritativeStateMessage,
+    PeerStateMessage
 };

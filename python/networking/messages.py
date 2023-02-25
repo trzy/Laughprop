@@ -37,7 +37,13 @@ class ClientSnapshotMessage:
 @dataclass
 class AuthoritativeStateMessage:
     screen: str
-    state_params_json: str
+    state_json: str
+
+@dataclass
+class PeerStateMessage:
+    from_client_id: str
+    screen: str
+    state_json: str
 
 @dataclass
 class Txt2ImgRequestMessage:

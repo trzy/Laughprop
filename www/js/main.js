@@ -104,7 +104,7 @@ function createScreen(name)
     switch (name)
     {
     case SelectGameScreen.name:
-        return new SelectGameScreen(g_currentGameId, sendMessage);
+        return new SelectGameScreen(g_clientId, g_currentGameId, sendMessage);
     default:
         console.log("Error: Cannot instantiate unknown UI screen: " + name);
         return null;
