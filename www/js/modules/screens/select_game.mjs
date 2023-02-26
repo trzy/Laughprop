@@ -2,10 +2,17 @@
  * www/js/modules/screens/select_game.mjs
  * Bart Trzynadlowski, 2023
  *
- * Select game UI screen.
+ * Select game UI screen. When all clients have made a selection, the game with the most votes is
+ * started.
+ *
+ * Whenever a selection is made, it is broadcast to all peers, so that everyone is aware of each
+ * others' votes and can try to make an authoritative selection. It is important to broadcast a
+ * snapshot of this state to peers whenever a new peer joins.
  */
 
 import { UIScreen } from "./ui_screen.mjs";
+import { FunniestImageGameScreen } from "./funniest_image_game.mjs";
+import { MovieGameScreen } from "./movie_game.mjs";
 import { ClientSnapshotMessage, AuthoritativeStateMessage, PeerStateMessage } from "../messages.mjs";
 
 class SelectGamePeerState
@@ -44,7 +51,7 @@ class SelectGameScreen extends UIScreen
             this._clientIds = msg.client_ids;
             console.log("Current number of clients: " + this._clientIds.length);
             console.log("Clients:", this._clientIds);
-            this._sendMessageFn(new AuthoritativeStateMessage(SelectGameScreen.name, {}));
+            this._sendMessageFn(new AuthoritativeStateMessage(this.className, {}));
             // TODO: authoritative state must integrate peer states because peer state update alone may be
             //       missed if received before the authoritative state update from actual authority
             this._sendPeerState();  // peer state after authoritative state
@@ -67,6 +74,7 @@ class SelectGameScreen extends UIScreen
          {
              let winningGame = this._determineWinningSelection();
              console.log("Winning selection: " + winningGame);
+             this._sendMessageFn(new AuthoritativeStateMessage(winningGame, {}));
          }
          else
          {
@@ -117,15 +125,19 @@ class SelectGameScreen extends UIScreen
 
     _sendPeerState()
     {
-        let state = new SelectGamePeerState(this._selectionByClientId[this._ourClientId]);
-        this._sendMessageFn(new PeerStateMessage(this._ourClientId, this.className, state));
+        // Only send an update if we've made a selection
+        if (this._ourClientId in this._selectionByClientId)
+        {
+            let state = new SelectGamePeerState(this._selectionByClientId[this._ourClientId]);
+            this._sendMessageFn(new PeerStateMessage(this._ourClientId, this.className, state));
+        }
     }
 
     _onFunniestImageGameButtonClicked(button)
     {
         this._deselectAllButtons();
         button.addClass("button-selected");
-        this._selectionByClientId[this._ourClientId] = "FunniestImageGame";
+        this._selectionByClientId[this._ourClientId] = FunniestImageGameScreen.name;
         this._sendPeerState();
         this._tryStartGame();
     }
@@ -134,7 +146,7 @@ class SelectGameScreen extends UIScreen
     {
         this._deselectAllButtons();
         button.addClass("button-selected");
-        this._selectionByClientId[this._ourClientId] = "MovieGame";
+        this._selectionByClientId[this._ourClientId] = MovieGameScreen.name;
         this._sendPeerState();
         this._tryStartGame();
     }

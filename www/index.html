@@ -139,7 +139,7 @@
         </div>
 
         <!-- Select Game -->
-        <div id="SelectGameScreen" class="screen ">
+        <div id="SelectGameScreen" class="screen">
 
             <input id="GameID" type="text" class="left" maxlength="4" />
 
@@ -147,10 +147,40 @@
                 <span>Select Game</span>
             </div>
 
-            <div class="message">Choose a game. When all players have voted, the game will begin.</div>
+            <div class="message">
+                <span>Choose a game. When all players have voted, the game will begin.</span>
+            </div>
 
             <div id="FunniestImageGameButton" class="button left">It's a Mood</div>
             <div id="MovieGameButton" class="button left">I'd Watch That</div>
+
+        </div>
+
+        <!-- TODO NEXT: SelectGameScreen should attach state to authoritative state -->
+
+        <!-- Funniest Image Game -->
+        <div id="FunniestImageGameScreen" class="screen">
+
+            <div class="subtitle">
+                <span>It's a Mood</span>
+            </div>
+
+            <div class="message">
+                <span></span>
+            </div>
+
+        </div>
+
+        <!-- Movie Game -->
+        <div id="MovieGameScreen" class="screen">
+
+            <div class="subtitle">
+                <span>I'd Watch That</span>
+            </div>
+
+            <div class="message">
+                <span></span>
+            </div>
 
         </div>
 

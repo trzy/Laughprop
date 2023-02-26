@@ -22,6 +22,8 @@ import
 } from "./modules/messages.mjs";
 import { WelcomeScreen } from "./modules/screens/welcome.mjs";
 import { SelectGameScreen } from "./modules/screens/select_game.mjs";
+import { FunniestImageGameScreen } from "./modules/screens/funniest_image_game.mjs";
+import { MovieGameScreen } from "./modules/screens/movie_game.mjs";
 
 var g_socket = null;
 var g_ourClientId = crypto.randomUUID();
@@ -112,6 +114,10 @@ function createScreen(name)
     {
     case SelectGameScreen.name:
         return new SelectGameScreen(g_ourClientId, g_currentGameId, g_currentGameClientIds, sendMessage);
+    case FunniestImageGameScreen.name:
+        return new FunniestImageGameScreen(g_ourClientId, g_currentGameId, g_currentGameClientIds, sendMessage);
+    case MovieGameScreen.name:
+        return new MovieGameScreen(g_ourClientId, g_currentGameId, g_currentGameClientIds, sendMessage);
     default:
         console.log("Error: Cannot instantiate unknown UI screen: " + name);
         return null;
