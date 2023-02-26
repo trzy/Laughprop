@@ -72,6 +72,7 @@ class SelectGameScreen extends UIScreen
          // Once all clients have transmitted their selections, pick a winner
          if (Object.keys(this._selectionByClientId).sort().toString() == this._clientIds.sort().toString())
          {
+            console.log("Determining winner from:", this._selectionByClientId);
              let winningGame = this._determineWinningSelection();
              console.log("Winning selection: " + winningGame);
              this._sendMessageFn(new AuthoritativeStateMessage(winningGame, {}));
@@ -90,9 +91,9 @@ class SelectGameScreen extends UIScreen
         let numVotesBySelection = {};
         for (const selection of selections)
         {
-            if (selection in numVotesBySelection)
+            if (!(selection in numVotesBySelection))
             {
-                numVotesBySelection[selection] = 0;
+                numVotesBySelection[selection] = 1;
             }
             else
             {
@@ -138,6 +139,7 @@ class SelectGameScreen extends UIScreen
         this._deselectAllButtons();
         button.addClass("button-selected");
         this._selectionByClientId[this._ourClientId] = FunniestImageGameScreen.name;
+        console.log("Made selection. Current selections:", this._selectionByClientId);
         this._sendPeerState();
         this._tryStartGame();
     }
@@ -147,6 +149,7 @@ class SelectGameScreen extends UIScreen
         this._deselectAllButtons();
         button.addClass("button-selected");
         this._selectionByClientId[this._ourClientId] = MovieGameScreen.name;
+        console.log("Made selection. Current selections:", this._selectionByClientId);
         this._sendPeerState();
         this._tryStartGame();
     }
