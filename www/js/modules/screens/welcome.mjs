@@ -19,7 +19,7 @@ class WelcomeScreen extends UIScreen
     _sendMessageFn;
 
     // State
-    _client_ids;
+    _clientIds;
 
     // UI elements
     _gameIdField;
@@ -39,9 +39,9 @@ class WelcomeScreen extends UIScreen
     {
         if (msg instanceof ClientSnapshotMessage)
         {
-            this._client_ids = msg.client_ids;
-            console.log("Current number of clients: " + this._client_ids.length);
-            if (this._client_ids.length >= 2)
+            this._clientIds = msg.client_ids;
+            console.log("Current number of clients: " + this._clientIds.length);
+            if (this._clientIds.length >= 2)
             {
                 // Whether joining or starting the game, once we have at least two clients, move on
                 this._sendMessageFn(new AuthoritativeStateMessage(SelectGameScreen.name, {}));
@@ -114,7 +114,7 @@ class WelcomeScreen extends UIScreen
         super();
         let self = this;
 
-        this._client_ids = [];
+        this._clientIds = [];
 
         this._onNewGameSelected = onNewGameSelected;
         this._onJoinGameSelected = onJoinGameSelected;

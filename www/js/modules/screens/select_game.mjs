@@ -24,9 +24,9 @@ class SelectGameScreen extends UIScreen
     _sendMessageFn;
 
     // State
-    _our_client_id;
-    _selection_by_client_id;
-    _client_ids;
+    _ourClientId;
+    _selectionByClientId;
+    _clientIds;
 
     // UI elements
     _gameButtons;
@@ -41,8 +41,9 @@ class SelectGameScreen extends UIScreen
         if (msg instanceof ClientSnapshotMessage)
         {
             // Client snapshot indicates someone joined or left. We must sent a state update in return.
-            this._client_ids = msg.client_ids;
-            console.log("Current number of clients: " + this._client_ids.length);
+            this._clientIds = msg.client_ids;
+            console.log("Current number of clients: " + this._clientIds.length);
+            console.log("Clients:", this._clientIds);
             this._sendMessageFn(new AuthoritativeStateMessage(SelectGameScreen.name, {}));
             // TODO: authoritative state must integrate peer states because peer state update alone may be
             //       missed if received before the authoritative state update from actual authority
@@ -51,31 +52,91 @@ class SelectGameScreen extends UIScreen
         else if (msg instanceof PeerStateMessage)
         {
             // Someone sent us their selection
-            this._selection_by_client_id[msg.from_client_id] = msg.state.selection;
-            console.log("Current game selections:", this._selection_by_client_id);
+            this._selectionByClientId[msg.from_client_id] = msg.state.selection;
+            console.log("Current game selections:", this._selectionByClientId);
+
+            // Check if we have enough votes to proceed
+            this._tryStartGame();
         }
+    }
+
+    _tryStartGame()
+    {
+         // Once all clients have transmitted their selections, pick a winner
+         if (Object.keys(this._selectionByClientId).sort().toString() == this._clientIds.sort().toString())
+         {
+             let winningGame = this._determineWinningSelection();
+             console.log("Winning selection: " + winningGame);
+         }
+         else
+         {
+            console.log("Insufficient votes", Object.keys(this._selectionByClientId), this._clientIds);
+         }
+    }
+
+    _determineWinningSelection()
+    {
+        let selections = Object.values(this._selectionByClientId);
+
+        // Count votes
+        let numVotesBySelection = {};
+        for (const selection of selections)
+        {
+            if (selection in numVotesBySelection)
+            {
+                numVotesBySelection[selection] = 0;
+            }
+            else
+            {
+                numVotesBySelection[selection] += 1;
+            }
+        }
+
+        // Who has the most votes, if anyone?
+        let mostPopularSelection = null;
+        let highestNumVotes = 0;
+        for (const [selection, numVotes] of Object.entries(numVotesBySelection))
+        {
+            if (numVotes > highestNumVotes)
+            {
+                highestNumVotes = numVotes;
+                mostPopularSelection = selection;
+            }
+        }
+
+        // Has anyone won? If so, return the popular choice
+        let winnerExists = highestNumVotes > 1 || highestNumVotes == this._clientIds.length;
+        if (winnerExists)
+        {
+            return mostPopularSelection;
+        }
+
+        // A tie -- just pick a winner at random
+        return selections[Math.floor(Math.random() * selections.length)];
     }
 
     _sendPeerState()
     {
-        let state = new SelectGamePeerState(this._selection_by_client_id[this._our_client_id]);
-        this._sendMessageFn(new PeerStateMessage(this._our_client_id, this.className, state));
+        let state = new SelectGamePeerState(this._selectionByClientId[this._ourClientId]);
+        this._sendMessageFn(new PeerStateMessage(this._ourClientId, this.className, state));
     }
 
     _onFunniestImageGameButtonClicked(button)
     {
         this._deselectAllButtons();
         button.addClass("button-selected");
-        this._selection_by_client_id[this._our_client_id] = "FunniestImageGame";
+        this._selectionByClientId[this._ourClientId] = "FunniestImageGame";
         this._sendPeerState();
+        this._tryStartGame();
     }
 
     _onMovieGameButtonClicked(button)
     {
         this._deselectAllButtons();
         button.addClass("button-selected");
-        this._selection_by_client_id[this._our_client_id] = "MovieGame";
+        this._selectionByClientId[this._ourClientId] = "MovieGame";
         this._sendPeerState();
+        this._tryStartGame();
     }
 
     _deselectAllButtons()
@@ -86,14 +147,14 @@ class SelectGameScreen extends UIScreen
         }
     }
 
-    constructor(client_id, gameId, sendMessageFn)
+    constructor(ourClientId, gameId, gameClientIds, sendMessageFn)
     {
         super();
         let self = this;
 
-        this._our_client_id = client_id;
-        this._selection_by_client_id = {};
-        this._client_ids = [];
+        this._ourClientId = ourClientId;
+        this._selectionByClientId = {};
+        this._clientIds = gameClientIds.slice();
 
         this._sendMessageFn = sendMessageFn;
 

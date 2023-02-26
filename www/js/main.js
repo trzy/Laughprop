@@ -24,9 +24,10 @@ import { WelcomeScreen } from "./modules/screens/welcome.mjs";
 import { SelectGameScreen } from "./modules/screens/select_game.mjs";
 
 var g_socket = null;
-var g_clientId = crypto.randomUUID();
+var g_ourClientId = crypto.randomUUID();
 var g_currentScreen = null;
 var g_currentGameId = null;
+var g_currentGameClientIds = [];
 
 function connectToBackend()
 {
@@ -40,7 +41,7 @@ function connectToBackend()
     {
         console.log("Connection established");
         sendMessage(new HelloMessage("Hello from client"));
-        sendMessage(new ClientIDMessage(g_clientId));
+        sendMessage(new ClientIDMessage(g_ourClientId));
     };
 
     g_socket.onmessage = function(event)
@@ -54,12 +55,13 @@ function connectToBackend()
             // Client snapshot messages are special: they tell us which game we are part of
             if (msg instanceof ClientSnapshotMessage)
             {
-                if (!msg.client_ids.includes(g_clientId))
+                if (!msg.client_ids.includes(g_ourClientId))
                 {
-                    console.log(`Error: Received ClientSnapshotMessage without our own client ID ${g_clientId} in it`);
+                    console.log(`Error: Received ClientSnapshotMessage without our own client ID ${g_ourClientId} in it`);
                     return;
                 }
                 g_currentGameId = msg.game_id;
+                g_currentGameClientIds = msg.client_ids;
             }
 
             // Authoritative state messages are special: they are used to create new screens if needed
@@ -109,7 +111,7 @@ function createScreen(name)
     switch (name)
     {
     case SelectGameScreen.name:
-        return new SelectGameScreen(g_clientId, g_currentGameId, sendMessage);
+        return new SelectGameScreen(g_ourClientId, g_currentGameId, g_currentGameClientIds, sendMessage);
     default:
         console.log("Error: Cannot instantiate unknown UI screen: " + name);
         return null;
