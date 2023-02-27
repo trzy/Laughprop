@@ -8,7 +8,7 @@
 
 import { UIScreen } from "./ui_screen.mjs";
 import { SelectGameScreen } from "./select_game.mjs";
-import { generateGameId } from "../game_id.mjs";
+import { generateGameId } from "../utils.mjs";
 import { UnknownGameMessage, ClientSnapshotMessage, AuthoritativeStateMessage } from "../messages.mjs";
 
 class WelcomeScreen extends UIScreen

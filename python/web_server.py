@@ -160,6 +160,7 @@ class WebMessageHandler(MessageHandler):
         if client_id is None:
             print("Error: Ignoring Txt2ImgRequestMessage because client ID not found for session")
             return
+        print("Received txt2img request: Client ID=%s, Request ID=%s, Prompt=%s" % (client_id, msg.request_id, msg.prompt))
         async def send_result(result):
             encoded_images = []
             for image in result.images:
@@ -168,6 +169,7 @@ class WebMessageHandler(MessageHandler):
                 encoded_images.append(base64.b64encode(buffered.getvalue()).decode(encoding = "ascii"))
             response_msg = ImageResponseMessage(request_id = result.request_id, images = encoded_images)
             await self._send_message(client_id = client_id, msg = response_msg)
+            print("Sent txt2img response: Client ID=%s, Request ID=%s" % (client_id, result.request_id))
         await self._image_provider.submit_prompt(prompt = msg.prompt, request_id = msg.request_id, completion = send_result)
 
     def _try_lookup_client_id(self, session: web.WebSocketResponse) -> str:

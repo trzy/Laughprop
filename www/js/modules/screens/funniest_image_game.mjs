@@ -7,6 +7,7 @@
 
 import { UIScreen } from "./ui_screen.mjs";
 import { ClientSnapshotMessage, AuthoritativeStateMessage, Txt2ImgRequestMessage, ImageResponseMessage } from "../messages.mjs";
+import { generateUuid } from "../utils.mjs";
 
 const GameState =
 {
@@ -123,7 +124,7 @@ class FunniestImageGameScreen extends UIScreen
             return;
         }
 
-        let msg = new Txt2ImgRequestMessage(prompt, "foobar");
+        let msg = new Txt2ImgRequestMessage(prompt, generateUuid());
         this._sendMessageFn(msg);
     }
 

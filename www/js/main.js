@@ -10,6 +10,7 @@
  *   users to optionally attempt to reconnect.
  */
 
+import { generateUuid } from "./modules/utils.mjs";
 import
 {
     tryConstructMessageFromDictionary,
@@ -26,22 +27,10 @@ import { FunniestImageGameScreen } from "./modules/screens/funniest_image_game.m
 import { MovieGameScreen } from "./modules/screens/movie_game.mjs";
 
 var g_socket = null;
-var g_ourClientId = generateUUID();
+var g_ourClientId = generateUuid();
 var g_currentScreen = null;
 var g_currentGameId = null;
 var g_currentGameClientIds = [];
-
-function generateUUID()
-{
-    if (window.crypto && window.crypto.randomUUID)
-    {
-        return crypto.randomUUID();
-    }
-    else
-    {
-        return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c => (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16));
-    }
-}
 
 function connectToBackend()
 {
