@@ -253,7 +253,7 @@ async def run_web_server(app: web.Application):
     add_routes(app = app)
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner = runner, host = "localhost", port = options.port)
+    site = web.TCPSite(runner = runner, host = None, port = options.port)   # use host = None or IP address or it won't be accessible
     await site.start()
     print("Serving web site on http://127.0.0.1:%d..." % options.port)
     await asyncio.Event().wait()    # wait forever
