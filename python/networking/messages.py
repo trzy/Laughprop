@@ -48,3 +48,9 @@ class PeerStateMessage:
 @dataclass
 class Txt2ImgRequestMessage:
     prompt: str
+    request_id: str
+
+@dataclass
+class ImageResponseMessage:
+    request_id: str
+    images: List[str]

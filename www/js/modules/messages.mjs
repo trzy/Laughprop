@@ -30,6 +30,8 @@ function tryConstructMessageFromDictionary(dictionary)
         return AuthoritativeStateMessage.fromDictionary(dictionary);
     case "PeerStateMessage":
         return PeerStateMessage.fromDictionary(dictionary);
+    case "ImageResponseMessage":
+        return ImageResponseMessage.fromDictionary(dictionary);
     }
 
     return null;
@@ -181,6 +183,37 @@ class PeerStateMessage
     }
 }
 
+class Txt2ImgRequestMessage
+{
+    __id = "Txt2ImgRequestMessage";
+    prompt;
+    request_id;
+
+    constructor(prompt, request_id)
+    {
+        this.prompt = prompt;
+        this.request_id = request_id;
+    }
+}
+
+class ImageResponseMessage
+{
+    __id = "ImageResponseMessage"
+    request_id;
+    images;
+
+    static fromDictionary(dictionary)
+    {
+        return new ImageResponseMessage(dictionary["request_id"], dictionary["images"]);
+    }
+
+    constructor(request_id, images)
+    {
+        this.request_id = request_id;
+        this.images = images;
+    }
+}
+
 export
 {
     tryConstructMessageFromDictionary,
@@ -191,5 +224,7 @@ export
     UnknownGameMessage,
     ClientSnapshotMessage,
     AuthoritativeStateMessage,
-    PeerStateMessage
+    PeerStateMessage,
+    Txt2ImgRequestMessage,
+    ImageResponseMessage
 };

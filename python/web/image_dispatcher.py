@@ -7,13 +7,22 @@
 #
 
 import asyncio
+from dataclasses import dataclass
+from PIL.Image import Image
 import platform
+from typing import Callable
 
 from ..networking.tcp import Server
 from ..networking.tcp import Session
 from ..networking.message_handling import handler
 from ..networking.message_handling import MessageHandler
 from ..networking.messages import *
+
+
+@dataclass
+class ImageResult:
+    request_id: str
+    images: List[Image]
 
 
 class ImageDispatcherTask(MessageHandler):
@@ -26,7 +35,7 @@ class ImageDispatcherTask(MessageHandler):
         print("Starting image dispatcher...")
         await self._server.run()
 
-    async def submit_prompt(self, prompt):
+    async def submit_prompt(self, prompt: str, request_id: str, completion: Callable[[ImageResult], None]):
         # This method should submit a prompt, wait for a response, and keep track of which client
         # the request was bound for. If the worker it was submitted to disconnects before
         # responding, it should automatically re-submit!

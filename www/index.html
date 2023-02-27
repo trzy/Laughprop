@@ -98,6 +98,35 @@
                         color: #e0f;
                     }
 
+            /*
+             * FunniestImageGameScreen
+             */
+
+            #FunniestImageGameScreen .message
+                    {
+                        clear: both;
+                        margin-top: 2vw;
+                        margin-bottom: 2vw;
+                        width: 100%;
+                        text-align: left;
+                        font-weight: bold;
+                        font-size: 3vw;
+                        color: #e0f;
+                    }
+
+            #FunniestImageGameScreen .prompt
+                    {
+                        margin-left: 2.5%;
+                        margin-right: 2.5%;
+                        width: 90%;
+                        clear: both;
+                        height: 5vw;
+                        background-color: #888;
+                        text-align: left;
+                        font-size: 2vw;
+                        font-weight: bold;
+                        color: black;
+                    }
         </style>
 
         <script type="text/javascript" src="js/thirdparty/jquery.2.2.0.min.js"></script>
@@ -166,8 +195,15 @@
             </div>
 
             <div class="message">
-                <span></span>
+                <span id="Instructions"></span>
             </div>
+
+            <div id="Prompt">
+                <input id="PromptTextField" type="text" class="prompt left" />
+                <div id="SubmitButton" class="button left">Submit</div>
+            </div>
+
+            <img></img>
 
         </div>
 

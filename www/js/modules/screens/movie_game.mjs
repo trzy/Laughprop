@@ -34,6 +34,10 @@ class MovieGameScreen extends UIScreen
         }
     }
 
+    _sendPeerState()
+    {
+    }
+
     constructor(ourClientId, gameId, gameClientIds, sendMessageFn)
     {
         super();

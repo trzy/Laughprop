@@ -10,12 +10,15 @@ import argparse
 import asyncio
 import aiohttp
 from aiohttp import web
+import base64
+from io import BytesIO
 import mimetypes
 import time
 from typing import Tuple
 import weakref
 
 from .web.image_dispatcher import ImageDispatcherTask
+from .web.simulated_image_dispatcher import SimulatedImageDispatcherTask
 from .networking.message_handling import MessageHandler
 from .networking.message_handling import handler
 from .networking.messages import *
@@ -33,8 +36,9 @@ from .networking.serialization import LaserTagJSONEncoder
 ###############################################################################
 
 class WebMessageHandler(MessageHandler):
-    def __init__(self):
+    def __init__(self, image_provider):
         super().__init__()
+        self._image_provider = image_provider
         self._ws_by_client_id = {}          # store client WebSockets
         self._client_id_by_ws = {}
         self._client_ids_by_game_id = {}    # set of client IDs indexed by game ID
@@ -149,6 +153,22 @@ class WebMessageHandler(MessageHandler):
         for peer_id in self._client_ids_by_game_id[game_id]:
             if peer_id != client_id:
                 await self._send_message(client_id = peer_id, msg = msg)
+
+    @handler(Txt2ImgRequestMessage)
+    async def handle_Txt2ImgRequestMessage(self, session: web.WebSocketResponse, msg: Txt2ImgRequestMessage, timestamp: float):
+        client_id = self._try_lookup_client_id(session = session)
+        if client_id is None:
+            print("Error: Ignoring Txt2ImgRequestMessage because client ID not found for session")
+            return
+        async def send_result(result):
+            encoded_images = []
+            for image in result.images:
+                buffered = BytesIO()
+                image.save(buffered, format="JPEG")
+                encoded_images.append(base64.b64encode(buffered.getvalue()).decode(encoding = "ascii"))
+            response_msg = ImageResponseMessage(request_id = result.request_id, images = encoded_images)
+            await self._send_message(client_id = client_id, msg = response_msg)
+        await self._image_provider.submit_prompt(prompt = msg.prompt, request_id = msg.request_id, completion = send_result)
 
     def _try_lookup_client_id(self, session: web.WebSocketResponse) -> str:
         return self._client_id_by_ws[weakref.ref(session)]
@@ -267,15 +287,16 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser("web_server")
     parser.add_argument("--port", metavar = "port", type = int, action = "store", default = 8080, help = "Port to run web server on")
     parser.add_argument("--image-port", metavar = "port", type = int, action = "store", default = 6503, help = "Listen for image clients on specified port")
+    parser.add_argument("--simulated-images", action = "store_true", help = "Simulate image generation")
     options = parser.parse_args()
 
     loop = asyncio.new_event_loop()
     tasks = []
     app = web.Application()
-    app["web_message_handler"] = WebMessageHandler()
-    worker_task = ImageDispatcherTask(port = options.image_port)
+    image_task = ImageDispatcherTask(port = options.image_port) if not options.simulated_images else SimulatedImageDispatcherTask()
+    app["web_message_handler"] = WebMessageHandler(image_provider = image_task)
     tasks.append(loop.create_task(run_web_server(app = app)))
-    tasks.append(loop.create_task(worker_task.run()))
+    tasks.append(loop.create_task(image_task.run()))
     try:
         loop.run_until_complete(asyncio.gather(*tasks))
     except KeyboardInterrupt:

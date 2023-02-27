@@ -6,16 +6,38 @@
  */
 
 import { UIScreen } from "./ui_screen.mjs";
-import { ClientSnapshotMessage, AuthoritativeStateMessage } from "../messages.mjs";
+import { ClientSnapshotMessage, AuthoritativeStateMessage, Txt2ImgRequestMessage, ImageResponseMessage } from "../messages.mjs";
+
+const GameState =
+{
+    Prompt: "Prompt",           // user must type and submit a prompt
+    SubmitImage: "SubmitImage", // select which image to submit for the previous prompt
+    VoteImage: "VoteImage",     // vote on other users' images
+    ShowWinner: "ShowWinner"    // show the winner
+};
+Object.freeze(GameState);
+
+class AuthoritativeState
+{
+    promptNumber = 0;   // which prompt number are we on
+}
 
 class FunniestImageGameScreen extends UIScreen
 {
     // Callbacks
     _sendMessageFn;
 
+    // UI
+    _instructions;
+    _promptContainer;
+    _promptField;
+    _submitPromptButton;
+
     // State
     _ourClientId;
     _clientIds;
+    _promptNumber = 0;
+    _gameState = GameState.Prompt;
 
     get className()
     {
@@ -24,14 +46,85 @@ class FunniestImageGameScreen extends UIScreen
 
     onMessageReceived(msg)
     {
-        if (msg instanceof ClientSnapshotMessage)
+        if (msg instanceof AuthoritativeStateMessage)
+        {
+            this._applyAuthoritativeState(msg.state);
+        }
+        else if (msg instanceof ClientSnapshotMessage)
         {
             // Client snapshot indicates someone joined or left. We must sent a state update in return.
             this._clientIds = msg.client_ids;
             console.log("Current number of clients: " + this._clientIds.length);
-            this._sendMessageFn(new AuthoritativeStateMessage(this.className, {}));
-            this._sendPeerState();  // peer state after authoritative state
+            this._sendAuthoritativeState();
+            //this._sendPeerState();  // peer state after authoritative state
         }
+        else if (msg instanceof ImageResponseMessage)
+        {
+            let img = $("#FunniestImageGameScreen").find("img")[0];
+            img.src = "data:image/jpeg;base64," + msg.images[0];
+        }
+    }
+
+    _sendAuthoritativeState()
+    {
+        let state = new AuthoritativeState();
+        state.promptNumber = this._promptNumber;
+        let msg = new AuthoritativeStateMessage(this.className, state);
+        this._sendMessageFn(msg);
+    }
+
+    _sendPeerState()
+    {
+    }
+
+    _applyAuthoritativeState(state)
+    {
+        if (Object.keys(state) == 0)
+        {
+            // Empty objects can occur when other screens transition to this one, and we should just substitute a default object
+            state = new AuthoritativeState();
+        }
+
+        // Handle state change
+        if (state.promptNumber != this._promptNumber)
+        {
+            this._setPrompt(state.promptNumber);
+        }
+    }
+
+    _setPrompt(promptNumber)
+    {
+        this._promptNumber = promptNumber;
+
+        if (this._promptNumber == 0)
+        {
+            // First prompt. Give overview of entire game.
+            this._instructions.text("Themes will be presented. Write descriptions to generate the funniest images and vote for the winners.");
+        }
+        else
+        {
+            // Subsequent prompts. More brevity.
+            this._instructions.text("Describe a scene that best fits the theme.");
+        }
+
+        this._gameState = GameState.Prompt;
+
+        let self = this;
+        this._promptContainer.show();
+        this._promptField.val("");
+        this._submitPromptButton.off("click").click(function() { self._onSubmitPromptButtonClicked() });
+    }
+
+    _onSubmitPromptButtonClicked()
+    {
+        let prompt = this._promptField.val();
+        if (!prompt || prompt.length <= 0)
+        {
+            return;
+        }
+
+        let msg = new Txt2ImgRequestMessage(prompt, "foobar");
+        this._sendMessageFn(msg);
     }
 
     constructor(ourClientId, gameId, gameClientIds, sendMessageFn)
@@ -44,6 +137,14 @@ class FunniestImageGameScreen extends UIScreen
 
         this._sendMessageFn = sendMessageFn;
 
+        this._instructions = $("#FunniestImageGameScreen #Instructions");
+        this._promptContainer = $("#FunniestImageGameScreen #Prompt");
+        this._promptField = $("#FunniestImageGameScreen #PromptTextField");
+        this._submitPromptButton = $("#FunniestImageGameScreen #SubmitButton");
+
+        this._promptContainer.hide();
+
+        this._setPrompt(0);
         $("#FunniestImageGameScreen").show();
     }
 }
