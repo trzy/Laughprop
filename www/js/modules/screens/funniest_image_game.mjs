@@ -40,6 +40,8 @@ class FunniestImageGameScreen extends UIScreen
     _promptField;
     _submitPromptButton;
     _imageCarouselContainer;
+    _imageSelected;                     // this is a JQuery element
+    _imageCarouselThumbnails = [];      // these are raw DOM elements
 
     // State
     _ourClientId;
@@ -55,6 +57,8 @@ class FunniestImageGameScreen extends UIScreen
 
     onMessageReceived(msg)
     {
+        let self = this;
+
         if (msg instanceof AuthoritativeStateMessage)
         {
             this._applyAuthoritativeState(msg.state);
@@ -75,11 +79,12 @@ class FunniestImageGameScreen extends UIScreen
                 this._setLocalGameState(GameState.SubmitImage);
 
                 // Place images in selection carousel
-                let imgs = $("#FunniestImageGameScreen").find("img");
-                for (let i = 0; i < Math.min(msg.images.length, imgs.length); i++)
+                for (let i = 0; i < Math.min(msg.images.length, this._imageCarouselThumbnails.length); i++)
                 {
-                    imgs[i].src = "data:image/jpeg;base64," + msg.images[i];
+                    this._imageCarouselThumbnails[i].src = "data:image/jpeg;base64," + msg.images[i];
+                    $(this._imageCarouselThumbnails[i]).off("click").click(function() { self._onImageThumbnailClicked(i) });
                 }
+                this._onImageThumbnailClicked(0);
             }
             else
             {
@@ -128,6 +133,15 @@ class FunniestImageGameScreen extends UIScreen
         this._setLocalGameState(GameState.WaitImages);
     }
 
+    _onImageThumbnailClicked(idx)
+    {
+        if (idx >= this._imageCarouselThumbnails.length)
+        {
+            return;
+        }
+        this._imageSelected.attr("src", this._imageCarouselThumbnails[idx].src);
+    }
+
     _setLocalGameState(state, promptNumber = null)
     {
         this._gameState = state;
@@ -158,22 +172,39 @@ class FunniestImageGameScreen extends UIScreen
                 this._promptContainer.show();
                 this._promptField.val("");
                 this._submitPromptButton.off("click").click(function() { self._onSubmitPromptButtonClicked() });
-                this._imageCarouselContainer.hide();
+                this._setImageCarouselVisible(false);
                 this._imageRequestId = null;
                 break;
             case GameState.WaitImages:
                 this._instructions.text("Hang tight. Generating images...");
                 this._instructions.show();
                 this._promptContainer.hide();
-                this._imageCarouselContainer.hide();
+                this._setImageCarouselVisible(false);
                 break;
             case GameState.SubmitImage:
                 this._instructions.text("Select a generated image to use.")
                 this._instructions.show();
                 this._promptContainer.hide();
-                this._imageCarouselContainer.show();
+                this._setImageCarouselVisible(true);
                 this._imageRequestId = null;
                 break;
+        }
+    }
+
+    _setImageCarouselVisible(visible)
+    {
+        if (visible)
+        {
+            this._imageCarouselContainer.show();
+        }
+        else
+        {
+            this._imageCarouselContainer.hide();
+        }
+
+        for (let i = 0; i < this._imageCarouselThumbnails.length; i++)
+        {
+            $(this._imageCarouselThumbnails[i]).off("click");
         }
     }
 
@@ -192,9 +223,11 @@ class FunniestImageGameScreen extends UIScreen
         this._promptField = $("#FunniestImageGameScreen #PromptTextField");
         this._submitPromptButton = $("#FunniestImageGameScreen #SubmitButton");
         this._imageCarouselContainer = $("#FunniestImageGameScreen #Carousel");
+        this._imageSelected = $("#FunniestImageGameScreen #Carousel #SelectedImage");
+        this._imageCarouselThumbnails = $("#FunniestImageGameScreen").find("img.thumbnail");
 
         this._promptContainer.hide();
-        this._imageCarouselContainer.hide();
+        this._setImageCarouselVisible(false);
 
         this._setLocalGameState(GameState.Prompt, 0);
         $("#FunniestImageGameScreen").show();

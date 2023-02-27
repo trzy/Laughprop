@@ -126,6 +126,11 @@
                         font-weight: bold;
                         color: black;
                     }
+
+            #FunniestImageGameScreen .thumbnail
+                    {
+                        width: 23.75%;
+                    }
         </style>
 
         <script type="text/javascript" src="js/thirdparty/jquery.2.2.0.min.js"></script>
@@ -201,10 +206,15 @@
             </div>
 
             <div id="Carousel" style="margin:auto; clear:both;">
-                <img width="23.75%" />
-                <img width="23.75%" />
-                <img width="23.75%" />
-                <img width="23.75%" />
+                <div style="margin:auto; clear:both;">
+                    <img id="SelectedImage" />
+                </div>
+                <div style="margin:auto; clear:both;">
+                    <img class="thumbnail" />
+                    <img class="thumbnail" />
+                    <img class="thumbnail" />
+                    <img class="thumbnail" />
+                </div>
             </div>
 
         </div>
