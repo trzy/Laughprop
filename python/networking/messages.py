@@ -54,3 +54,15 @@ class Txt2ImgRequestMessage:
 class ImageResponseMessage:
     request_id: str
     images: List[str]
+
+@dataclass
+class RequestCachedImagesMessage:
+    request_ids: List[str]
+    idxs: List[int]
+
+@dataclass
+class CachedImagesMessage:
+    client_ids: List[str]
+    request_ids: List[str]
+    idxs: List[int]
+    images: List[str]

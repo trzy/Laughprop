@@ -131,6 +131,24 @@
                     {
                         width: 23.75%;
                     }
+
+            #FunniestImageGameScreen .candidate-image
+                    {
+                        width: 90%;
+                        clear: both;
+                    }
+
+            #FunniestImageGameScreen .selected
+                    {
+                        outline-style: solid;
+                        outline-width: 4px;
+                        outline-color: yellow;
+                    }
+
+            #FunniestImageGameScreen .disabled
+                    {
+                        background-color: #888;
+                    }
         </style>
 
         <script type="text/javascript" src="js/thirdparty/jquery.2.2.0.min.js"></script>
@@ -215,6 +233,14 @@
                     <img class="thumbnail" />
                     <img class="thumbnail" />
                 </div>
+                <div id="SelectImageButton" class="button left">Accept</div>
+            </div>
+
+            <div id="CandidateImages" style="margin:auto; clear:both;">
+                <div id="VoteImageButton" class="button left">Cast Vote</div>
+            </div>
+
+            <div id="WinningImage" style="margin:auto; clear:both;">
             </div>
 
         </div>

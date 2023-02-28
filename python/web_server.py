@@ -14,6 +14,7 @@ import base64
 from io import BytesIO
 import mimetypes
 import time
+from typing import Dict
 from typing import Tuple
 import weakref
 
@@ -35,6 +36,13 @@ from .networking.serialization import LaserTagJSONEncoder
 # with the message.
 ###############################################################################
 
+@dataclass
+class CachedImage:
+    request_id: str # request ID of the generated image
+    idx: int        # index identifying the image in the generated set of images
+    data: str       # base64-encoded string of image data ready for transmission
+    client_id: str  # client ID identifying who created the image
+
 class WebMessageHandler(MessageHandler):
     def __init__(self, image_provider):
         super().__init__()
@@ -43,6 +51,7 @@ class WebMessageHandler(MessageHandler):
         self._client_id_by_ws = {}
         self._client_ids_by_game_id = {}    # set of client IDs indexed by game ID
         self._joined_time_by_client_id = {} # timestamp that each client last joined
+        self._cached_images_by_game_id: Dict[str, List[CachedImage]] = {}
 
     async def remove_session(self, session: web.WebSocketResponse):
         ws = weakref.ref(session)
@@ -157,20 +166,67 @@ class WebMessageHandler(MessageHandler):
     @handler(Txt2ImgRequestMessage)
     async def handle_Txt2ImgRequestMessage(self, session: web.WebSocketResponse, msg: Txt2ImgRequestMessage, timestamp: float):
         client_id = self._try_lookup_client_id(session = session)
+        game_id = self._try_lookup_game_id(client_id = client_id)
         if client_id is None:
             print("Error: Ignoring Txt2ImgRequestMessage because client ID not found for session")
             return
+        if game_id is None:
+            print("Error: Ignoring Txt2ImgRequestMessage from client ID %s because it is not part of any current game" % client_id)
+            return
         print("Received txt2img request: Client ID=%s, Request ID=%s, Prompt=%s" % (client_id, msg.request_id, msg.prompt))
-        async def send_result(result):
+
+        async def cache_and_send_result(result):
             encoded_images = []
+            i = 0
             for image in result.images:
+                # To Base64
                 buffered = BytesIO()
                 image.save(buffered, format="JPEG")
-                encoded_images.append(base64.b64encode(buffered.getvalue()).decode(encoding = "ascii"))
+                encoded_image = base64.b64encode(buffered.getvalue()).decode(encoding = "ascii")
+                encoded_images.append(encoded_image)
+
+                # Cache it!
+                if game_id not in self._cached_images_by_game_id:
+                    self._cached_images_by_game_id[game_id] = []
+                cached_image = CachedImage(request_id = result.request_id, idx = i, data = encoded_image, client_id = client_id)
+                self._cached_images_by_game_id[game_id].append(cached_image)
+
+                i += 1
             response_msg = ImageResponseMessage(request_id = result.request_id, images = encoded_images)
             await self._send_message(client_id = client_id, msg = response_msg)
             print("Sent txt2img response: Client ID=%s, Request ID=%s" % (client_id, result.request_id))
-        await self._image_provider.submit_prompt(prompt = msg.prompt, request_id = msg.request_id, completion = send_result)
+
+        await self._image_provider.submit_prompt(prompt = msg.prompt, request_id = msg.request_id, completion = cache_and_send_result)
+
+    @handler(RequestCachedImagesMessage)
+    async def handle_RequestCachedImagesMessage(self, session: web.WebSocketResponse, msg: RequestCachedImagesMessage, timestamp: float):
+        client_id = self._try_lookup_client_id(session = session)
+        game_id = self._try_lookup_game_id(client_id = client_id)
+        if client_id is None:
+            print("Error: Ignoring RequestCachedImagesMessage because client ID not found for session")
+            return
+        if game_id is None:
+            print("Error: Ignoring RequestCachedImagesMessage from client ID %s because it is not part of any current game" % client_id)
+            return
+        if game_id not in self._cached_images_by_game_id:
+            print("Error: Ignoring RequestCachedImagesMessage from client ID %s because there are no cached images associated with game ID %s" % (client_id, game_id))
+            return
+        if len(msg.request_ids) != len(msg.idxs):
+            print("Error: Ignoring RequestCachedImagesMessage from client ID %s because number of request IDs (%d) and indices (%d) do not match" % (client_id, len(msg.request_ids), len(msg.idxs)))
+            return
+        response_msg = CachedImagesMessage(client_ids = [], request_ids = [], idxs = [], images = [])
+        keys = [ (msg.request_ids[i], msg.idxs[i]) for i in range(len(msg.request_ids)) ]
+        for cached_image in self._cached_images_by_game_id[game_id]:
+            for key in keys:
+                if cached_image.request_id == key[0] and cached_image.idx == key[1]:
+                    response_msg.client_ids.append(cached_image.client_id)
+                    response_msg.request_ids.append(key[0])
+                    response_msg.idxs.append(key[1])
+                    response_msg.images.append(cached_image.data)
+        if len(response_msg.images) != len(msg.request_ids):
+            print("Error: Some cached images requested by client ID %s were not found (found %d of %d)" % (client_id, len(response_msg.images), len(msg.request_ids)))
+        print("Sent CachedImagesMessage: Client ID=%s" % client_id)
+        await session.send_str(LaserTagJSONEncoder().encode(response_msg))
 
     def _try_lookup_client_id(self, session: web.WebSocketResponse) -> str:
         return self._client_id_by_ws[weakref.ref(session)]
@@ -232,6 +288,7 @@ class WebMessageHandler(MessageHandler):
 
     def _purge_dead_games(self):
         self._client_ids_by_game_id = { game_id: client_ids for game_id, client_ids in self._client_ids_by_game_id.items() if len(client_ids) > 0 }
+        self._cached_images_by_game_id = { game_id: cached_images for game_id, cached_images in self._cached_images_by_game_id.items() if (game_id in self._client_ids_by_game_id) }
 
     def _game_exists(self, game_id: str):
         return game_id in self._client_ids_by_game_id
