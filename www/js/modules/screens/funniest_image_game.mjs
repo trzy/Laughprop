@@ -373,7 +373,7 @@ class FunniestImageGameScreen extends UIScreen
         }
 
         // Disable the voting button until clicked
-        this._voteImageButton.addClass("disabled");
+        this._voteImageButton.addClass("button-disabled");
         this._voteImageButton.show();
     }
 
@@ -387,12 +387,12 @@ class FunniestImageGameScreen extends UIScreen
         img.addClass("image-selected");
 
         // Enable voting button
-        this._voteImageButton.removeClass("disabled");
+        this._voteImageButton.removeClass("button-disabled");
     }
 
     _onVoteImageButtonClicked()
     {
-        if (this._voteImageButton.hasClass("disabled"))
+        if (this._voteImageButton.hasClass("button-disabled"))
         {
             return;
         }
@@ -692,7 +692,7 @@ class FunniestImageGameScreen extends UIScreen
 
         this._selectImageButton.off("click").click(function() { self._onSelectImageButtonClicked() });
         this._voteImageButton.off("click").click(function() { self._onVoteImageButtonClicked(); });
-        this._voteImageButton.addClass("disabled");
+        this._voteImageButton.addClass("button-disabled");
 
         // Get started
         this._setLocalGameState(GameState.WaitToStart);

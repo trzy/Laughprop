@@ -89,12 +89,12 @@ class WelcomeScreen extends UIScreen
         {
             // Join button becomes selectable when we have 4 characters
             let self = this;
-            this._joinGameButton.removeClass("disabled");
+            this._joinGameButton.removeClass("button-disabled");
             this._joinGameButton.off("click").click(function() { self._onJoinGameButtonClicked() });
         }
         else
         {
-            this._joinGameButton.addClass("disabled");
+            this._joinGameButton.addClass("button-disabled");
             this._joinGameButton.off("click");
         }
     }
@@ -133,7 +133,7 @@ class WelcomeScreen extends UIScreen
 
         this._newGameButton.off("click").click(function() { self._onNewGameButtonClicked() });
 
-        this._joinGameButton.addClass("disabled");
+        this._joinGameButton.addClass("button-disabled");
 
         this._buttonsContainer.show();
 
