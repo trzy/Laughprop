@@ -120,6 +120,18 @@
                         color: #e0f;
                     }
 
+            #FunniestImageGameScreen .theme-description
+                    {
+                        clear: both;
+                        margin-top: 2vw;
+                        margin-bottom: 2vw;
+                        width: 100%;
+                        text-align: left;
+                        font-weight: bold;
+                        font-size: 3vw;
+                        color: #ee0;
+                    }
+
             #FunniestImageGameScreen .prompt
                     {
                         margin-left: 2.5%;
@@ -214,11 +226,20 @@
                 <span>It's a Mood</span>
             </div>
 
+            <!-- Instructions for what to do printed at the top. -->
             <div class="message">
                 <span id="Instructions"></span>
             </div>
 
+            <!-- Theme, prompt entry field, and submit button -->
             <div id="Prompt">
+
+                <!-- Print theme -->
+                <div class="theme-description">
+                    <span id="Theme"></span>
+                </div>
+
+                <!-- Prompt and button -->
                 <input id="PromptTextField" type="text" class="prompt left" />
                 <div id="SubmitButton" class="button left">Submit</div>
             </div>

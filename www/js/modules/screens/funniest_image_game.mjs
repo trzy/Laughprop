@@ -34,7 +34,7 @@ const GameState =
     WaitOtherImages: "WaitOtherImages", // wait for everyone else's images
     VoteImage: "VoteImage",             // vote on other users' images
     WaitVotes: "WaitVotes",             // wait for votes to arrive
-    ShowWinner: "ShowWinner"            // show the winner
+    ShowRoundWinner: "ShowRoundWinner"  // show the current round winner
 };
 Object.freeze(GameState);
 
@@ -79,6 +79,7 @@ class FunniestImageGameScreen extends UIScreen
     // UI
     _instructions;
     _promptContainer;
+    _themeText;
     _promptField;
     _submitPromptButton;
     _imageCarouselContainer;
@@ -100,6 +101,13 @@ class FunniestImageGameScreen extends UIScreen
     _cachedImagesByRequestIdAndIdx = {};    // cached images by "request_idx,id"
     _winningImageClientId;              // client ID of winning image
     _winners = [];                      // for each prompt number, an array of winning client IDs ([[...], [...], ...])
+
+    // Themes
+    _themes = [
+        "Best place to hide in a zombie apocalypse.",
+        "A hairy situation.",
+        "Celebrities supplementing their income."
+    ];
 
     get className()
     {
@@ -123,7 +131,7 @@ class FunniestImageGameScreen extends UIScreen
             }
             else if (this._gameState == GameState.WaitVotes)
             {
-                this._tryDeclareWinner();
+                this._tryDeclareRoundWinner();
             }
         }
         else if (msg instanceof ClientSnapshotMessage)
@@ -206,7 +214,7 @@ class FunniestImageGameScreen extends UIScreen
 
         // Always update winners
         this._winners = state.winners;
-        this._tryShowWinner();
+        this._tryShowRoundWinner();
     }
 
     _onSubmitPromptButtonClicked()
@@ -373,14 +381,14 @@ class FunniestImageGameScreen extends UIScreen
 
         // Advance state to wait until we get everyone else's submissions
         this._setLocalGameState(GameState.WaitVotes);
-        this._tryDeclareWinner();
+        this._tryDeclareRoundWinner();
     }
 
-    _tryDeclareWinner()
+    _tryDeclareRoundWinner()
     {
         if (this._gameState != GameState.WaitVotes)
         {
-            console.log("Error: _tryDeclareWinner() called in wrong state");
+            console.log("Error: _tryDeclareRoundWinner() called in wrong state");
             return;
         }
 
@@ -456,7 +464,7 @@ class FunniestImageGameScreen extends UIScreen
         }
     }
 
-    _tryShowWinner()
+    _tryShowRoundWinner()
     {
         let self = this;
 
@@ -465,7 +473,7 @@ class FunniestImageGameScreen extends UIScreen
             return;
         }
 
-        this._setLocalGameState(GameState.ShowWinner);
+        this._setLocalGameState(GameState.ShowRoundWinner);
 
         // Remove any existing images
         $("#FunniestImageGameScreen #WinningImage img").remove();
@@ -524,6 +532,7 @@ class FunniestImageGameScreen extends UIScreen
                     this._instructions.text("Describe a scene that best fits the theme.");
                 }
                 this._instructions.show();
+                this._themeText.text(this._themes[this._promptNumber]);
                 this._promptContainer.show();
                 this._promptField.val("");
                 this._submitPromptButton.off("click").click(function() { self._onSubmitPromptButtonClicked() });
@@ -586,7 +595,7 @@ class FunniestImageGameScreen extends UIScreen
                 this._imageRequestId = null;
                 this._winningImageContainer.hide();
                 break;
-            case GameState.ShowWinner:
+            case GameState.ShowRoundWinner:
                 this._instructions.text("And the winner is...");
                 this._instructions.show();
                 this._promptContainer.hide();
@@ -628,6 +637,7 @@ class FunniestImageGameScreen extends UIScreen
 
         this._instructions = $("#FunniestImageGameScreen #Instructions");
         this._promptContainer = $("#FunniestImageGameScreen #Prompt");
+        this._themeText = $("#FunniestImageGameScreen #Theme");
         this._promptField = $("#FunniestImageGameScreen #PromptTextField");
         this._submitPromptButton = $("#FunniestImageGameScreen #SubmitButton");
         this._imageCarouselContainer = $("#FunniestImageGameScreen #Carousel");
