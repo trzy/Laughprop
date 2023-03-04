@@ -102,8 +102,8 @@ class FunniestImageGameScreen extends UIScreen
     _winningImageClientId;              // client ID of winning image
     _winners = [];                      // for each prompt number, an array of winning client IDs ([[...], [...], ...])
 
-    // Themes
-    _themes = [
+    // Theme for each prompt (also determines the number of prompts!)
+    _promptThemes = [
         "Best place to hide in a zombie apocalypse.",
         "A hairy situation.",
         "Celebrities supplementing their income."
@@ -342,7 +342,7 @@ class FunniestImageGameScreen extends UIScreen
             let img = $("<img>");
             img.attr("src", "data:image/jpeg;base64," + msg.images[i]);
             img.prop("clientId", msg.client_ids[i]);
-            this._candidateImagesContainer.append(img);
+            this._candidateImagesContainer.prepend(img);
             img.click(function() { self._onCandidateImageClicked(img, msg.client_ids[i]); });
         }
 
@@ -492,7 +492,7 @@ class FunniestImageGameScreen extends UIScreen
                     // Create new that is a clone
                     let img = $("<img>");
                     img.attr("src", $(this).attr("src"));
-                    self._winningImageContainer.append(img);
+                    self._winningImageContainer.prepend(img);
                 }
                 else
                 {
@@ -502,6 +502,7 @@ class FunniestImageGameScreen extends UIScreen
         }
 
         // Is there a tie?
+        //TODO print that we have a tie
     }
 
 
@@ -532,7 +533,7 @@ class FunniestImageGameScreen extends UIScreen
                     this._instructions.text("Describe a scene that best fits the theme.");
                 }
                 this._instructions.show();
-                this._themeText.text(this._themes[this._promptNumber]);
+                this._themeText.text(this._promptThemes[this._promptNumber]);
                 this._promptContainer.show();
                 this._promptField.val("");
                 this._submitPromptButton.off("click").click(function() { self._onSubmitPromptButtonClicked() });
