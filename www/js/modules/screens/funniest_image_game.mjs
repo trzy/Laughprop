@@ -6,8 +6,7 @@
  *
  * TODO:
  * -----
- * - Load 4 different sample images.
- * - Finishing touches: continue to next prompt, fill in actual prompts, highlight to allow image to be selected.
+ * - Finishing touches: continue to next prompt, fill in actual prompts.
  * - Set a timer when submitting image requests and if it triggers before images are returned,
  *   print an error.
  * - Do not allow game to be joined once started (it's just not possible to resume).
@@ -229,6 +228,17 @@ class FunniestImageGameScreen extends UIScreen
         {
             return;
         }
+
+        // De-select all thumbnails
+        for (let i = 0; i < this._imageCarouselThumbnails.length; i++)
+        {
+            $(this._imageCarouselThumbnails[i]).removeClass("image-selected");
+        }
+
+        // Select our thumbnail
+        $(this._imageCarouselThumbnails[idx]).addClass("image-selected");
+
+        // Replace image preview with selection
         this._imageSelected.attr("src", this._imageCarouselThumbnails[idx].src);
         this._imageSelctionIdx = idx;
     }
@@ -336,11 +346,11 @@ class FunniestImageGameScreen extends UIScreen
     _onCandidateImageClicked(img, client_id)
     {
         // De-select all
-        $("#FunniestImageGameScreen #CandidateImages img").removeClass("selected");
+        $("#FunniestImageGameScreen #CandidateImages img").removeClass("image-selected");
 
         // Select image
         this._winningImageClientId = client_id;
-        img.addClass("selected");
+        img.addClass("image-selected");
 
         // Enable voting button
         this._voteImageButton.removeClass("disabled");
