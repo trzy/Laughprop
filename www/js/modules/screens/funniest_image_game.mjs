@@ -4,15 +4,39 @@
  *
  * Funniest image game UI screen.
  *
+ * Clients send their peer state to everyone else to communicate their individual decisions.
+ * Transitions between local states occur when all expected peer state updates are received
+ * and the authority makes a decision. The authoritative state message is then used to drive
+ * everyone forward together.
+ *
+ * At the beginning of the game, a random theme is drawn and an authoritative state message is
+ * used to synchronize everyone to that same prompt.
+ *
+ * Unfortunately, the authoritative state message currently does not allow a client to join in the
+ * middle of a game and catch up. With some careful effort, this probably could be supported but
+ * we would need to be aware of states that were irretrievably missed and ignore them for that
+ * client.
+ *
+ * Note on Round Numbers
+ * ---------------------
+ * - Originally, the game was meant to have multiple rounds but was reduced to a single round
+ *   number. Confusingly, many data structures, such as the ones in the PeerState, are encoded as
+ *   arrays with each element representing the round. But because there is now a single round, the
+ *   arrays will always be of length 1.
+ *
  * TODO:
  * -----
- * - Finishing touches: continue to next prompt, fill in actual prompts.
+ * - "Return to Lobby" button should either enter a state where we wait for everyone to make
+ *   the same decision or send authoritative message but also enter a waiting state in case
+ *   we are not the authority (otherwise, it appears button does nothing). Latter is easiest
+ *   for now.
  * - Set a timer when submitting image requests and if it triggers before images are returned,
  *   print an error.
  * - Do not allow game to be joined once started (it's just not possible to resume).
  */
 
 import { UIScreen } from "./ui_screen.mjs";
+import { SelectGameScreen } from "./select_game.mjs";
 import
 {
     ClientSnapshotMessage,
@@ -27,6 +51,7 @@ import { generateUuid } from "../utils.mjs";
 
 const GameState =
 {
+    WaitToStart: "WaitToStart",         // wait for the authority to determine the theme
     Prompt: "Prompt",                   // user must type and submit a prompt
     WaitOurImages: "WaitOurImages",     // wait for our images to come back
     SubmitImage: "SubmitImage",         // select which image to submit for the previous prompt
@@ -41,15 +66,15 @@ Object.freeze(GameState);
 class AuthoritativeState
 {
     promptNumber = 0;   // which prompt number are we on
-    winners = [];       // for each prompt number, a list of winners once we have them
+    winners = [];       // for each round number, a list of winners once we have them
 }
 
 // Peer state object (empty object is used if N/A)
 class PeerState
 {
     // Client's generated selections
-    selectionRequestIds = [];   // array of selection request IDs so far, in order of prompt number
-    selectionIdxs = [];         // array of image indexes (associated with each request ID), in order of prompt number
+    selectionRequestIds = [];   // array of selection request IDs so far, in order of round we are on (currently only one round supported)
+    selectionIdxs = [];         // array of image indexes (associated with each request ID), in order of round number
 
     // Client's vote
     clientIdVotes = [];          // client ID of voted image
@@ -89,18 +114,19 @@ class FunniestImageGameScreen extends UIScreen
     _candidateImagesContainer;
     _voteImageButton;
     _winningImageContainer;
+    _nextGameButton;
 
     // State
     _ourClientId;
     _clientIds;                         // most up-to-date set of clients -- use this to iterate all client ID-keyed maps (in case those maps contain disconnected clients)
-    _promptNumber = 0;
+    _promptNumber = -1;                 // current prompt number initalized to invalid value so that first authoritative message resets it
     _gameState = GameState.Prompt;
     _imageRequestId = null;             // images are uniquely identified in a game session by request ID and index (e.g., 0-3)
     _imageSelctionIdx = 0;
     _peerStateByClientId = {};          // everyone state, including our own (needed to make authoritative decisions about how/when to proceed forward)
     _cachedImagesByRequestIdAndIdx = {};    // cached images by "request_idx,id"
     _winningImageClientId;              // client ID of winning image
-    _winners = [];                      // for each prompt number, an array of winning client IDs ([[...], [...], ...])
+    _winners = [];                      // for each round number, an array of winning client IDs ([[...], [...], ...])
 
     // Theme for each prompt (also determines the number of prompts!)
     _promptThemes = [
@@ -207,7 +233,7 @@ class FunniestImageGameScreen extends UIScreen
         }
 
         // Handle state change
-        if (state.promptNumber != this._promptNumber)
+        if (state.promptNumber != this._promptNumber || this._gameState == GameState.WaitToStart)
         {
             this._setLocalGameState(GameState.Prompt, state.promptNumber);
         }
@@ -274,7 +300,7 @@ class FunniestImageGameScreen extends UIScreen
 
         // Have we received everyone's submissions for this prompt number? _clientIds contains the
         // definitive list of active players.
-        let numPrompts = this._promptNumber + 1;
+        let numPrompts = 1;
         let receivedAll = true;
         for (let clientId of this._clientIds)
         {
@@ -317,7 +343,7 @@ class FunniestImageGameScreen extends UIScreen
                 return;
             }
             let state = this._peerStateByClientId[peerId];
-            let idx = this._promptNumber;
+            let idx = 0;
             if (idx < state.selectionRequestIds.length && idx < state.selectionIdxs.length)
             {
                 msg.request_ids.push(state.selectionRequestIds[idx]);
@@ -392,7 +418,7 @@ class FunniestImageGameScreen extends UIScreen
             return;
         }
 
-        let numPrompts = this._promptNumber + 1;
+        let numPrompts = 1;
         if (this._winners.length >= numPrompts)
         {
             console.log("Error: Already declared a winner!");
@@ -425,7 +451,7 @@ class FunniestImageGameScreen extends UIScreen
             else
             {
                 // Count vote
-                let id = this._peerStateByClientId[clientId].clientIdVotes[this._promptNumber];
+                let id = this._peerStateByClientId[clientId].clientIdVotes[0];
                 if (id in votesByClientId)
                 {
                     // Count valid client IDs
@@ -479,9 +505,9 @@ class FunniestImageGameScreen extends UIScreen
         $("#FunniestImageGameScreen #WinningImage img").remove();
 
         // Create image elements for winner(s)
-        if (this._winners.length == this._promptNumber + 1)
+        if (this._winners.length == 1)
         {
-            let winners = this._winners[this._promptNumber];
+            let winners = this._winners[0];
 
             // Find existing and make clones of the ones that are winners
             $("#FunniestImageGameScreen #CandidateImages img").each(function(idx)
@@ -502,7 +528,11 @@ class FunniestImageGameScreen extends UIScreen
         }
 
         // Is there a tie?
-        //TODO print that we have a tie
+        //TODO: print that we have a tie
+
+        // Proceed back to game selection
+        //TODO: make this button appear after a timeout since anyone can press it to send everyone back
+        $(this._nextGameButton).off("click").click(function() { self._sendMessageFn(new AuthoritativeStateMessage(SelectGameScreen.name, {})); });
     }
 
 
@@ -512,6 +542,11 @@ class FunniestImageGameScreen extends UIScreen
         if (promptNumber != null)
         {
             this._promptNumber = promptNumber;
+            console.log($`Set state=${state}, promptNumber=${promptNumber}`);
+        }
+        else
+        {
+            console.log($`Set state=${state}`);
         }
 
         let self = this;
@@ -521,17 +556,17 @@ class FunniestImageGameScreen extends UIScreen
             default:
                 console.log("Error: Unhandled state: " + state);
                 break;
+            case GameState.WaitToStart:
+                this._instructions.text("Sit tight while we get started...");
+                this._instructions.show();
+                this._promptContainer.hide();
+                this._resetImageCarouselVisible(false);
+                this._candidateImagesContainer.hide();
+                this._imageRequestId = null;
+                this._winningImageContainer.hide();
+                break;
             case GameState.Prompt:
-                if (this._promptNumber == 0)
-                {
-                    // First prompt. Give overview of entire game.
-                    this._instructions.text("Themes will be presented. Write descriptions to generate the funniest images and vote for the winners.");
-                }
-                else
-                {
-                    // Subsequent prompts. More brevity.
-                    this._instructions.text("Describe a scene that best fits the theme.");
-                }
+                this._instructions.text("Describe a scene that best fits the theme.");
                 this._instructions.show();
                 this._themeText.text(this._promptThemes[this._promptNumber]);
                 this._promptContainer.show();
@@ -648,6 +683,7 @@ class FunniestImageGameScreen extends UIScreen
         this._candidateImagesContainer = $("#FunniestImageGameScreen #CandidateImages");
         this._voteImageButton = $("#FunniestImageGameScreen #VoteImageButton");
         this._winningImageContainer = $("#FunniestImageGameScreen #WinningImage");
+        this._nextGameButton = $("#FunniestImageGameScreen #NextGameButton");
 
         this._promptContainer.hide();
         this._resetImageCarouselVisible(false);
@@ -658,8 +694,13 @@ class FunniestImageGameScreen extends UIScreen
         this._voteImageButton.off("click").click(function() { self._onVoteImageButtonClicked(); });
         this._voteImageButton.addClass("disabled");
 
-        this._setLocalGameState(GameState.Prompt, 0);
+        // Get started
+        this._setLocalGameState(GameState.WaitToStart);
         $("#FunniestImageGameScreen").show();
+
+        // Pick a random theme and broadcast with authoritative state to everyone
+        this._promptNumber = Math.floor(Math.random() * this._promptThemes.length);
+        this._sendAuthoritativeState();
     }
 }
 
