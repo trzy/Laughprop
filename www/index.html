@@ -11,214 +11,13 @@
 
         <meta name="viewport" content="width=device-width, initial-scale=1.0">  <!-- responsive layout -->
 
-        <style>
-            body
-            {
-                background-color: #60a
-            }
-
-            .row
-            {
-                display: flex;
-                flex-direction: row;
-                flex-wrap: wrap;
-                width: 100%;
-            }
-
-            .column
-            {
-                display: flex;
-                flex-direction: column;
-                flex-basis: 100%;
-                flex: 1;
-            }
-
-            .title
-            {
-                text-align: center;
-                font-size: 10vw;
-                font-weight: bold;
-                color: whitesmoke;
-                clear: both;
-            }
-
-            .subtitle
-            {
-                text-align: center;
-                font-size: 8vw;
-                font-weight: bold;
-                color: #ee0;
-                clear: both;
-            }
-
-            .left
-            {
-                float: left;
-            }
-
-            .text-left
-            {
-                text-align: left;
-            }
-
-            .text-center
-            {
-                text-align: center;
-            }
-
-            .center-children
-            {
-                display: flex;
-                justify-content: center;
-            }
-
-            .message
-            {
-                clear: both;
-                margin-top: 2vw;
-                margin-bottom: 2vw;
-                width: 100%;
-                font-weight: bold;
-                font-size: 3vw;
-                color: #e0f;
-            }
-
-            .error
-            {
-                color: #e00;
-            }
-
-            .button
-            {
-                display: inline;
-                float: left;
-                margin-left: 1%;
-                margin-right: 1%;
-                height: 5vw;
-                line-height: 5vw;   /* needed to center text vertically */
-                min-width: 25%;
-                text-align: center;
-                font-size: 5vw;
-                color: white;
-                background-color: #90a;
-                border: 5px solid #ccc;
-                border-radius: 10px;
-            }
-
-            /*
-             * These classes are used by the code -- if you must change their names, make sure to
-             * update all JavaScript files that reference them.
-             */
-
-            .button-selected
-            {
-                background-color: #e0f;
-                border: 7px solid white;
-                border-radius: 10px;
-            }
-
-            .button-disabled
-            {
-                background-color: #888;
-            }
-
-            .image-selected
-            {
-                outline-style: solid;
-                outline-width: 4px;
-                outline-color: yellow;
-            }
-
-            /*
-             * WelcomeScreen
-             */
-
-            #GameID
-            {
-                clear: both;
-                margin-left: 37.5%;
-                margin-right: 37.5%;
-                margin-top: 2vw;
-                margin-bottom: 2vw;
-                width: 25%;
-                height: 5vw;
-                background-color: #888;
-                text-align: center;
-                font-size: 5vw;
-                font-weight: bold;
-                color: black;
-            }
-
-            /*
-             * SelectGameScreen
-             */
-
-
-            /*
-             * FunniestImageGameScreen
-             */
-
-            #FunniestImageGameScreen .theme-description
-            {
-                clear: both;
-                margin-top: 1vw;
-                margin-bottom: 1vw;
-                width: 100%;
-                text-align: left;
-                font-weight: bold;
-                font-size: 3vw;
-                color: #ee0;
-            }
-
-            #FunniestImageGameScreen .prompt
-            {
-                margin-left: 2.5%;
-                margin-right: 2.5%;
-                margin-top: 1vw;
-                margin-bottom: 1vw;
-                width: 90%;
-                clear: both;
-                height: 5vw;
-                background-color: #888;
-                text-align: left;
-                font-size: 2vw;
-                font-weight: bold;
-                color: black;
-            }
-
-            #FunniestImageGameScreen .thumbnail
-            {
-                width: 23.75%;
-                margin-left: 1%;
-                margin-right: 1%;
-            }
-
-            #FunniestImageGameScreen .candidate-image
-            {
-                width: 90%;
-                clear: both;
-            }
-
-            /*
-             * MovieGameScreen
-             */
-
-            #MovieGameScreen .prompt
-            {
-                margin-left: 2.5%;
-                margin-right: 2.5%;
-                margin-top: 1vw;
-                margin-bottom: 1vw;
-                width: 90%;
-                clear: both;
-                height: 5vw;
-                background-color: #888;
-                text-align: left;
-                font-size: 2vw;
-                font-weight: bold;
-                color: black;
-            }
-        </style>
+        <!-- Google Fonts -->
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300italic,700,700italic">
+        <!-- CSS Reset -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.css">
+        <!-- Milligram CSS -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.4.1/milligram.css">
+        <link rel="stylesheet" href="index.css"/>
 
         <script type="text/javascript" src="js/thirdparty/jquery.2.2.0.min.js"></script>
         <script type="module">
@@ -232,27 +31,27 @@
     </head>
 
     <body>
-        <div class="title">SDGame!</div>
+        <h1 class="title">SDGame!</h1>
 
         <!-- Welcome -->
         <div id="WelcomeScreen" class="screen">  <!-- "screen" class tag must be present on all top-level UI screens -->
 
             <input id="GameID" type="text" class="" maxlength="4"/>
 
-            <div id="Buttons" class="center-children">
-                <div id="NewGameButton" class="button ">New Game</div>
-                <div id="JoinGameButton" class="button button-disabled ">Join</div>
+            <div id="Buttons" class="center-children row">
+                <div id="JoinGameButton" class="button button-disabled column">Join</div>
+                <div id="NewGameButton" class="button button-outline column">New Game</div>
             </div>
 
             <div id="StartingNewGameMessage" class="message text-center">
                 <span>Starting new game. Waiting for at least one more player...</span>
             </div>
 
-            <div id="JoiningGameMessage" class="message">
+            <div id="JoiningGameMessage" class="message text-center">
                 <span>Joining game...</span>
             </div>
 
-            <div id="FailedToJoinGameMessage" class="message error">
+            <div id="FailedToJoinGameMessage" class="message error text-center">
                 <span>Could not join game! Try again.</span>
             </div>
 
@@ -263,17 +62,15 @@
 
             <input id="GameID" type="text" class="left" maxlength="4" />
 
-            <div class="subtitle">
-                <span>Select Game</span>
-            </div>
+            <h3 class="text-center">Select Game</h3>
 
             <div class="message text-center">
                 <span>Choose a game. When all players have voted, the game will begin.</span>
             </div>
 
-            <div class="center-children">
-                <div id="FunniestImageGameButton" class="button left">It's a Mood</div>
-                <div id="MovieGameButton" class="button left">I'd Watch That</div>
+            <div class="center-children row">
+                <div id="FunniestImageGameButton" class="button column">It's a Mood</div>
+                <div id="MovieGameButton" class="button column">I'd Watch That</div>
             </div>
 
         </div>
@@ -281,12 +78,10 @@
         <!-- Funniest Image Game -->
         <div id="FunniestImageGameScreen" class="screen">
 
-            <div class="subtitle">
-                <span>It's a Mood</span>
-            </div>
+            <p class="game-title">It's a Mood</p>
 
             <!-- Instructions for what to do printed at the top. -->
-            <div class="message text-left">
+            <div class="message text-center">
                 <span id="Instructions"></span>
             </div>
 
@@ -294,27 +89,29 @@
             <div id="Prompt">
 
                 <!-- Print theme -->
-                <div class="theme-description">
+                <div class="theme-description text-center">
                     <span id="Theme"></span>
                 </div>
 
                 <!-- Prompt and button -->
-                <input id="PromptTextField" type="text" class="prompt left" />
-                <div id="SubmitButton" class="button left">Submit</div>
+                <textarea id="PromptTextField" type="text" class="prompt"></textarea>
+                <div class="center-children">
+                    <button id="SubmitButton" class="button">Submit</button>
+                </div>
             </div>
 
             <div id="Carousel">
                 <div class="center-children" style="margin-top: 1vw; margin-bottom: 1vw;">
                     <img id="SelectedImage" />
                 </div>
-                <div class="center-children" style="margin-top: 1vw; margin-bottom: 1vw;">
+                <div class="thumbnail-list">
                     <img class="thumbnail" />
                     <img class="thumbnail" />
                     <img class="thumbnail" />
                     <img class="thumbnail" />
                 </div>
-                <div syle="center-children" style="margin-top: 1vw; margin-bottom: 1vw;">
-                    <div id="SelectImageButton" class="button">Accept</div>
+                <div class="center-children">
+                    <button id="SelectImageButton" class="button">Accept</button>
                 </div>
             </div>
 
@@ -335,9 +132,7 @@
         <!-- Movie Game -->
         <div id="MovieGameScreen" class="screen">
 
-            <div class="subtitle">
-                <span>I'd Watch That</span>
-            </div>
+            <h3 class="text-center">I'd Watch That</h3>
 
             <div class="message">
                 <span>Pick a movie and choose a new cast.</span>
