@@ -17,6 +17,22 @@
                 background-color: #60a
             }
 
+            .row
+            {
+                display: flex;
+                flex-direction: row;
+                flex-wrap: wrap;
+                width: 100%;
+            }
+
+            .column
+            {
+                display: flex;
+                flex-direction: column;
+                flex-basis: 100%;
+                flex: 1;
+            }
+
             .title
             {
                 text-align: center;
@@ -182,6 +198,26 @@
                 width: 90%;
                 clear: both;
             }
+
+            /*
+             * MovieGameScreen
+             */
+
+            #MovieGameScreen .prompt
+            {
+                margin-left: 2.5%;
+                margin-right: 2.5%;
+                margin-top: 1vw;
+                margin-bottom: 1vw;
+                width: 90%;
+                clear: both;
+                height: 5vw;
+                background-color: #888;
+                text-align: left;
+                font-size: 2vw;
+                font-weight: bold;
+                color: black;
+            }
         </style>
 
         <script type="text/javascript" src="js/thirdparty/jquery.2.2.0.min.js"></script>
@@ -304,7 +340,39 @@
             </div>
 
             <div class="message">
-                <span></span>
+                <span>Pick a movie and choose a new cast.</span>
+            </div>
+
+            <div>
+                <div class="row">
+                    <div class="column">
+                        <div class="button">Bloodsport</div>
+                        <div class="button">The Hangover</div>
+                        <div class="button">Star Wars</div>
+                        <div class="button">Step Brothers</div>
+                    </div>
+                    <div class="column">
+                        <div class="cast-member">
+                            <span class="cast-member-name">Cast Member 1</span>
+                            <input type="text" class="cast-member-prompt prompt left" />
+                        </div>
+                        <div class="cast-member">
+                            <span class="cast-member-name">Cast Member 2</span>
+                            <input type="text" class="cast-member-prompt prompt left" />
+                        </div>
+                        <div class="cast-member">
+                            <span class="cast-member-name">Cast Member 3</span>
+                            <input type="text" class="cast-member-prompt prompt left" />
+                        </div>
+                        <div class="cast-member">
+                            <span class="cast-member-name">Cast Member 4</span>
+                            <input type="text" class="cast-member-prompt prompt left" />
+                        </div>
+                    </div>
+                </div>
+                <div class="row center-children">
+                    <div id="SubmitCastButton" class="button">Submit</div>
+                </div>
             </div>
 
         </div>
