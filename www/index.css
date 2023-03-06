@@ -53,6 +53,26 @@ body {
     font-size: 1.8rem;
 }
 
+.thumbnail {
+    object-fit: cover;
+    padding: 0.2rem;
+}
+
+.thumbnail-list {
+    display: flex;
+    max-width: 25%;
+    margin-bottom: 1rem;
+}
+
+.candidate-image {
+    padding: 0.2rem;
+}
+
+.carousel {
+    display: block;
+    padding: 0 4rem;
+}
+
 /*
  * These classes are used by the code -- if you must change their names, make sure to
  * update all JavaScript files that reference them.
@@ -124,24 +144,3 @@ body {
     resize: vertical;
     height: 8rem;
 }
-
-#FunniestImageGameScreen .thumbnail {
-    object-fit: cover;
-    padding: 0.2rem;
-}
-
-#FunniestImageGameScreen .thumbnail-list {
-    display: flex;
-    max-width: 25%;
-    margin-bottom: 1rem;
-}
-
-#FunniestImageGameScreen .candidate-image {
-    padding: 0.2rem;
-}
-
-#FunniestImageGameScreen #Carousel {
-    display: block;
-    padding: 0 4rem;
-}
-

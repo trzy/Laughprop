@@ -134,11 +134,13 @@
 
             <h3 class="text-center">I'd Watch That</h3>
 
+            <!-- Instructions for what to do printed at the top. -->
             <div class="message">
-                <span>Pick a movie and choose a new cast.</span>
+                <span id="Instructions">Pick a movie and choose a new cast.</span>
             </div>
 
-            <div>
+            <!-- Movie selection and cast member prompts -->
+            <div id="MovieSelection">
                 <div class="row">
                     <div class="column">
                         <div class="button">Bloodsport</div>
@@ -167,6 +169,23 @@
                 </div>
                 <div class="row center-children">
                     <div id="SubmitCastButton" class="button">Submit</div>
+                </div>
+            </div>
+
+            <!-- Image result carousel -- for each scene, users must select an image result -->
+            <div id="Carousel" class="carousel">
+                <span id="SceneLabel" class="text-center">Scene 1</span>
+                <div class="center-children" style="margin-top: 1vw; margin-bottom: 1vw;">
+                    <img id="SelectedImage" />
+                </div>
+                <div class="thumbnail-list">
+                    <img class="thumbnail" />
+                    <img class="thumbnail" />
+                    <img class="thumbnail" />
+                    <img class="thumbnail" />
+                </div>
+                <div class="center-children">
+                    <button id="SelectImageButton" class="button">Accept</button>
                 </div>
             </div>
 
