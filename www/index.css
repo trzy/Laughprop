@@ -144,3 +144,23 @@ body {
     resize: vertical;
     height: 8rem;
 }
+
+/*
+ * MovieGameScreen
+ */
+
+#MovieGameScreen .row
+{
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    width: 100%;
+}
+
+#MovieGameScreen .column
+{
+    display: flex;
+    flex-direction: column;
+    flex-basis: 100%;
+    flex: 1;
+}

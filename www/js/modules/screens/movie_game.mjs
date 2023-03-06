@@ -22,14 +22,19 @@ const GameState =
 {
     SubmitPrompts:  "SubmitPrompts",    // select a movie, fill out cast prompts, submit
     WaitOurImages:  "WaitOurImages",    // wait for all our images to come back
-    SubmitImages:   "SubmitImages"      // select and submit picks for each scene
+    SubmitImages:   "SubmitImages",     // select and submit picks for each scene
+    WaitSubmissions: "WaitSubmissions", // wait for everyone to submit their images
+    WaitOtherImages: "WaitOtherImages", // wait for everyone else's images
+    SubmitVotes: "SubmitVotes",         // vote on other users' movies
 };
 Object.freeze(GameState);
 
-// Peer state object (empty object is used if N/A)
+// Peer state object
 class PeerState
 {
-    // Client's generated selections
+    //TODO: transmit movie name?
+
+    // Client's generated selections -- array lengths are 0 until movie has been selected, after which they are the same length as number of scenes
     selectionRequestIds = [];   // array of selection request IDs so far, in order of the different image (scene) requests
     selectionIdxs = [];         // array of image indexes (associated with each request ID)
 
@@ -37,6 +42,51 @@ class PeerState
     {
         this.selectionRequestIds = Array(numScenes).fill(null);
         this.selectionIdxs = Array(numScenes).fill(null);
+    }
+}
+
+class CachedImage
+{
+    client_id;
+    request_id;
+    idx;
+    image;
+
+    constructor(client_id, request_id, idx, image)
+    {
+        this.client_id = client_id;
+        this.request_id = request_id;
+        this.idx = idx;
+        this.image = image;
+    }
+}
+
+class Slideshow
+{
+    img;
+    span;
+    clientId;
+    images;
+    _currentImageIdx = -1;
+
+    nextImage()
+    {
+        if (this.images.length <= 0)
+        {
+            return;
+        }
+
+        this._currentImageIdx = (this._currentImageIdx + 1) % this.images.length;
+        this.img.attr("src", "data:image/jpeg;base64," + this.images[this._currentImageIdx]);
+        this.span.text("Scene " + (this._currentImageIdx + 1) + " / " + this.images.length);
+    }
+
+    constructor(img, span, clientId, images)
+    {
+        this.span = span;
+        this.img = img;
+        this.clientId = clientId;
+        this.images = images;
     }
 }
 
@@ -56,6 +106,7 @@ class MovieGameScreen extends UIScreen
     _sceneLabel;
     _imageSelected;                     // this is a JQuery element
     _imageCarouselThumbnails = [];      // these are raw DOM elements
+    _candidateSlideshowsContainer;
 
     // State
     _ourClientId;
@@ -64,6 +115,11 @@ class MovieGameScreen extends UIScreen
     _imageRequestIds = [];          // image requests sent, each corresponding to a different movie scene
     _imageResponseMessages = [];    // set of images returned, in same order as sent requests
     _peerStateByClientId = {};      // everyone's state, including our own (needed to make authoritative decisions about how/when to proceed forward)
+    _cachedImagesByRequestIdAndIdx = {};    // cached images by "request_idx,id"
+
+    // Slideshow management
+    _slideshows = [];
+    _slideshowTimer = null;
 
     // Movie name -> cast members
     _castMembersByMovie =
@@ -89,6 +145,20 @@ class MovieGameScreen extends UIScreen
             this._sendMessageFn(new AuthoritativeStateMessage(this.className, {}));
             this._sendPeerState();  // peer state after authoritative state
         }
+        else if (msg instanceof PeerStateMessage)
+        {
+            this._peerStateByClientId[msg.from_client_id] = msg.state;
+            if (this._gameState == GameState.WaitSubmissions)
+            {
+                this._waitForAllSubmissionsReceived();
+            }
+            /*
+            else if (this._gameState == GameState.WaitVotes)
+            {
+                this._tryDeclareRoundWinner();
+            }
+            */
+        }
         else if (msg instanceof ImageResponseMessage)
         {
             // Accumulate all images we are expecting
@@ -111,10 +181,35 @@ class MovieGameScreen extends UIScreen
                 console.log("Error: Unexpected ImageResponseMessage with request_id=" + msg.request_id + ". Our state=" + this._gameState + ", request ID=" + this._imageRequestId);
             }
         }
+        else if (msg instanceof CachedImagesMessage)
+        {
+            console.log("Received CachedImagesMessage");
+
+            if (msg.request_ids.length == msg.images.length && msg.idxs.length == msg.images.length && msg.client_ids.length == msg.request_ids.length)
+            {
+                for (let i = 0; i < msg.images.length; i++)
+                {
+                    let key = msg.request_ids[i] + "," + msg.idxs[i];
+                    this._cachedImagesByRequestIdAndIdx[key] = new CachedImage(msg.client_ids[i], msg.request_ids[i], msg.idxs[i], msg.images[i]);
+                }
+            }
+            else
+            {
+                console.log("Error: CachedImagesMessage has inconsistent data:", msg);
+            }
+
+            if (this._gameState == GameState.WaitOtherImages)
+            {
+                this._populateCandidateSlideshows(msg);
+                this._setLocalGameState(GameState.SubmitVotes);
+            }
+        }
     }
 
     _sendPeerState()
     {
+        // Always safe to send peer state (before movie selection, arrays will be 0-length, otherwise elements will be null until all scenes selected)
+        this._sendMessageFn(new PeerStateMessage(this._ourClientId, this.className, this._peerStateByClientId[this._ourClientId]));
     }
 
     _onMovieButtonClicked(button)
@@ -260,10 +355,157 @@ class MovieGameScreen extends UIScreen
         if (sceneNumber >= (numScenes - 1))
         {
             // Time to advance to next state
-            //TODO
+            this._sendPeerState();  // broadcast our selections
+            this._setLocalGameState(GameState.WaitSubmissions);
+            this._waitForAllSubmissionsReceived();
+        }
+        else
+        {
+            this._displayNextSceneForSelection(sceneNumber + 1);
+        }
+    }
+
+    _waitForAllSubmissionsReceived()
+    {
+        if (this._gameState != GameState.WaitSubmissions)
+        {
+            console.log("Error: _waitForAllSubmissionsReceived() called in wrong state");
             return;
         }
-        this._displayNextSceneForSelection(sceneNumber + 1);
+
+        // Have we received everyone's submissions? _clientIds contains the definitive list of
+        // active players. Each player may have a different number of selections corresponding to
+        // the different number of scenes in their movie selection but we can determine that all
+        // selections have been made by the absence of nulls in the arrays.
+        let receivedAll = true;
+        for (let clientId of this._clientIds)
+        {
+            if (!(clientId in this._peerStateByClientId))
+            {
+                receivedAll = false;
+                break;
+            }
+
+            // Make sure each client has recorded selections for all image responses
+            let state = this._peerStateByClientId[clientId];
+            if (state.selectionRequestIds.length != state.selectionIdxs.length)
+            {
+                console.log("Error: Client " + clientId + " sent an inconsistent peer state object:", state);
+                receivedAll = false;
+                break;
+            }
+            if (state.selectionRequestIds.includes(null) || state.selectionIdxs.includes(null))
+            {
+                receivedAll = false;
+                break;
+            }
+        }
+
+        // We can proceed if we received from everyone
+        if (receivedAll)
+        {
+            console.log("Requesting images to vote on...");
+            this._requestImagesFromPeers();
+            this._setLocalGameState(GameState.WaitOtherImages);
+        }
+        else
+        {
+            console.log("Unable to proceed to voting because not all responses have been received...", this._peerStateByClientId);
+        }
+    }
+
+    _requestImagesFromPeers()
+    {
+        // Ask server for everyone else's images (TODO: we are currently asking for our own as well but should not)
+        let msg = new RequestCachedImagesMessage();
+        for (let peerId of this._clientIds)
+        {
+            if (!(peerId in this._peerStateByClientId))
+            {
+                return;
+            }
+            let state = this._peerStateByClientId[peerId];
+            if (state.selectionRequestIds.length == state.selectionIdxs.length) // ensure the results are consistent
+            {
+                msg.request_ids = msg.request_ids.concat(state.selectionRequestIds);
+                msg.idxs = msg.idxs.concat(state.selectionIdxs);
+            }
+        }
+        this._sendMessageFn(msg);
+    }
+
+    _populateCandidateSlideshows(msg)
+    {
+        let self = this;
+
+        // Unpack images: we want arrays of images in the right order by client IDs (because
+        // message will have them in some jumbled order)
+        let imagesByClientId = {};  // client ID -> [ image for scene 1, image for scene 2, etc. (slideshow order) ]
+        for (const [clientId, state] of Object.entries(this._peerStateByClientId))
+        {
+            // The peer state object has the images in the correct order. We just need to extract
+            // the corresponding image data in that order from the cached image message.
+            let images = [];
+            let foundAll = true;
+            for (let requestId of state.selectionRequestIds)
+            {
+                let idx = msg.request_ids.indexOf(requestId);
+                if (idx >= 0)
+                {
+                    images.push(msg.images[idx]);
+                }
+                else
+                {
+                    // Should never happen
+                    foundAll = false;
+                }
+            }
+            if (!foundAll)
+            {
+                console.log("Error: Internal consistency error: not all images found for clientId=" + clientId);
+            }
+
+            imagesByClientId[clientId] = images;
+        }
+
+        // Remove any existing slideshows
+        $("#MovieGameScreen #CandidateSlideshows .slideshow").remove();
+        this._slideshows = [];
+
+        // Create slideshows
+        for (const [clientId, images] of Object.entries(imagesByClientId))
+        {
+            // Construct the slide show DOM elements and add to container
+
+            let container = $("<div>").addClass("slideshow").addClass("center-children").addClass("row").addClass("text-center");
+
+            let row_1 = $("<div>").addClass("row center-children");
+            let img = $("<img>");
+            img.prop("clientId", clientId);
+            img.click(function() { self._onCandidateSlideshowClicked(img, clientId); });
+            row_1.append(img);
+            container.append(row_1);
+
+            let row_2 = $("<div>").addClass("row center-children text-center");
+            let span = $("<span>").addClass("text-center");
+            row_2.append(span);
+            container.append(row_2);
+
+            this._candidateSlideshowsContainer.append(container);
+
+            // Create a slideshow object that will be updated automatically on a timer loop
+            let slideshow = new Slideshow(img, span, clientId, images);
+            this._slideshows.push(slideshow);
+        }
+
+        // Disable the voting button until clicked
+        //this._voteImageButton.addClass("button-disabled");
+        //this._voteImageButton.show();
+    }
+
+    _onCandidateSlideshowClicked(img, clientId)
+    {
+
     }
 
     _setLocalGameState(state)
@@ -286,6 +528,7 @@ class MovieGameScreen extends UIScreen
                 }
                 this._submitButton.hide();
                 this._imageCarouselContainer.hide();
+                this._candidateSlideshowsContainer.hide();
                 break;
             case GameState.WaitOurImages:
                 this._instructions.text("Filming underway. Coming soon to a browser near you!");
@@ -294,6 +537,7 @@ class MovieGameScreen extends UIScreen
                 this._castMemberContainers.hide();
                 this._submitButton.hide();
                 this._imageCarouselContainer.hide();
+                this._candidateSlideshowsContainer.hide();
                 break;
             case GameState.SubmitImages:
                 this._instructions.text("Select a generated image to use.");
@@ -302,8 +546,52 @@ class MovieGameScreen extends UIScreen
                 this._castMemberContainers.hide();
                 this._submitButton.hide();
                 this._imageCarouselContainer.show();
+                this._candidateSlideshowsContainer.hide();
+                break;
+            case GameState.WaitSubmissions:
+                this._instructions.text("Waiting for everyone to make their selections...");
+                this._instructions.show();
+                this._movieButtons.hide();
+                this._castMemberContainers.hide();
+                this._submitButton.hide();
+                this._imageCarouselContainer.hide();
+                this._candidateSlideshowsContainer.hide();
+                break;
+            case GameState.WaitOtherImages:
+                this._instructions.text("Waiting for everyone's images to arrive...");
+                this._instructions.show();
+                this._movieButtons.hide();
+                this._castMemberContainers.hide();
+                this._submitButton.hide();
+                this._imageCarouselContainer.hide();
+                this._candidateSlideshowsContainer.hide();
+                break;
+            case GameState.SubmitVotes:
+                this._instructions.text("Which flick is your top pick?");
+                this._instructions.show();
+                this._movieButtons.hide();
+                this._castMemberContainers.hide();
+                this._submitButton.hide();
+                this._imageCarouselContainer.hide();
+                this._candidateSlideshowsContainer.show();
                 break;
         }
+
+        //TODO: clear timer
+    }
+
+    // Runs continuously and, if slideshow objects exists, cycles images
+    //TODO: if is in viewport https://stackoverflow.com/questions/20791374/jquery-check-if-element-is-visible-in-viewport
+    _updateSlideshow()
+    {
+        for (let slideshow of this._slideshows)
+        {
+            slideshow.nextImage();
+        }
+
+        // Schedule next update
+        let self = this;
+        this._slideshowTimer = window.setTimeout(() => self._updateSlideshow(), 3000);
     }
 
     constructor(ourClientId, gameId, gameClientIds, sendMessageFn)
@@ -313,6 +601,7 @@ class MovieGameScreen extends UIScreen
 
         this._ourClientId = ourClientId;
         this._clientIds = gameClientIds.slice();
+        this._peerStateByClientId[this._ourClientId] = new PeerState(0);
 
         this._sendMessageFn = sendMessageFn;
 
@@ -327,15 +616,18 @@ class MovieGameScreen extends UIScreen
         this._imageSelected = $("#MovieGameScreen #Carousel #SelectedImage");
         this._imageCarouselThumbnails = $("#MovieGameScreen").find("img.thumbnail");
         this._selectImageButton = $("#MovieGameScreen #SelectImageButton");
+        this._candidateSlideshowsContainer = $("#MovieGameScreen #CandidateSlideshows");
 
         this._instructions.hide();
         this._movieButtons.hide();
         this._castMemberContainers.hide();
         this._submitButton.hide();
         this._imageCarouselContainer.hide();
+        this._candidateSlideshowsContainer.hide();
 
         $("#MovieGameScreen").show();
         this._setLocalGameState(GameState.SubmitPrompts);
+        this._updateSlideshow();
     }
 }
 
