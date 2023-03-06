@@ -73,6 +73,7 @@ function connectToBackend()
                 if (g_currentScreen == null || g_currentScreen.className != msg.screen)
                 {
                     // Need to destroy current screen and create new one
+                    console.log("Switching to screen: " + msg.screen);
                     g_currentScreen = createScreen(msg.screen);
                 }
             }

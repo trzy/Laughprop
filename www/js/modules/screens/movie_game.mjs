@@ -6,6 +6,7 @@
  */
 
 import { UIScreen } from "./ui_screen.mjs";
+import { SelectGameScreen } from "./select_game.mjs";
 import
 {
     ClientSnapshotMessage,
@@ -26,6 +27,8 @@ const GameState =
     WaitSubmissions: "WaitSubmissions", // wait for everyone to submit their images
     WaitOtherImages: "WaitOtherImages", // wait for everyone else's images
     SubmitVotes: "SubmitVotes",         // vote on other users' movies
+    WaitVotes: "WaitVotes",             // wait for everyone else's votes
+    ShowWinner: "ShowWinner"            // show the current round winner
 };
 Object.freeze(GameState);
 
@@ -37,6 +40,9 @@ class PeerState
     // Client's generated selections -- array lengths are 0 until movie has been selected, after which they are the same length as number of scenes
     selectionRequestIds = [];   // array of selection request IDs so far, in order of the different image (scene) requests
     selectionIdxs = [];         // array of image indexes (associated with each request ID)
+
+    // Vote
+    bestClientIdVote = null;    // which client we voted for
 
     constructor(numScenes)
     {
@@ -107,6 +113,7 @@ class MovieGameScreen extends UIScreen
     _imageSelected;                     // this is a JQuery element
     _imageCarouselThumbnails = [];      // these are raw DOM elements
     _candidateSlideshowsContainer;
+    _voteMovieButton;
 
     // State
     _ourClientId;
@@ -152,12 +159,10 @@ class MovieGameScreen extends UIScreen
             {
                 this._waitForAllSubmissionsReceived();
             }
-            /*
             else if (this._gameState == GameState.WaitVotes)
             {
-                this._tryDeclareRoundWinner();
+                this._tryDeclareWinner();
             }
-            */
         }
         else if (msg instanceof ImageResponseMessage)
         {
@@ -478,6 +483,7 @@ class MovieGameScreen extends UIScreen
             // Construct the slide show DOM elements and add to container
 
             let container = $("<div>").addClass("slideshow").addClass("center-children").addClass("row").addClass("text-center");
+            container.prop("clientId", clientId);
 
             let row_1 = $("<div>").addClass("row center-children");
             let img = $("<img>");
@@ -491,21 +497,128 @@ class MovieGameScreen extends UIScreen
             row_2.append(span);
             container.append(row_2);
 
-            this._candidateSlideshowsContainer.append(container);
+            this._candidateSlideshowsContainer.prepend(container);
 
             // Create a slideshow object that will be updated automatically on a timer loop
             let slideshow = new Slideshow(img, span, clientId, images);
             this._slideshows.push(slideshow);
         }
-
-        // Disable the voting button until clicked
-        //this._voteImageButton.addClass("button-disabled");
-        //this._voteImageButton.show();
     }
 
     _onCandidateSlideshowClicked(img, clientId)
     {
+        // De-select all
+        $("#MovieGameScreen #CandidateSlideshows img").removeClass("image-selected");
 
+        // Select image
+        img.addClass("image-selected");
+
+        // Enable voting button
+        let self = this;
+        this._voteMovieButton.removeClass("button-disabled");
+        this._voteMovieButton.off("click").click(() => self._onVoteMovieButtonClicked(clientId));
+    }
+
+    _onVoteMovieButtonClicked(votedClientId)
+    {
+        if (this._voteMovieButton.hasClass("button-disabled"))
+        {
+            return;
+        }
+
+        // Add our vote to our peer state and broadcast it
+        let ourState = this._peerStateByClientId[this._ourClientId];
+        ourState.bestClientIdVote = votedClientId;
+        this._sendPeerState();
+
+        // Advance state to wait until we get everyone else's submissions
+        this._setLocalGameState(GameState.WaitVotes);
+        this._tryDeclareWinner();
+    }
+
+    // Check whether all votes received and tally them, then declare winner
+    _tryDeclareWinner()
+    {
+        if (this._gameState != GameState.WaitVotes)
+        {
+            console.log("Error: _tryDeclareWinner() called in wrong state");
+            return;
+        }
+
+        // Have we received everyone's votes for this prompt number? _clientIds contains the
+        // definitive list of active players.
+        let receivedAll = true;
+        let votesByClientId = {};
+        for (let clientId of this._clientIds)
+        {
+            votesByClientId[clientId] = 0;
+        }
+        for (let clientId of this._clientIds)
+        {
+            if (!(clientId in this._peerStateByClientId))
+            {
+                receivedAll = false;
+                break;
+            }
+
+            // Make sure each client has recorded a vote
+            let state = this._peerStateByClientId[clientId];
+            if (!state.bestClientIdVote)
+            {
+                receivedAll = false;
+                break;
+            }
+            else
+            {
+                // Count vote
+                let id = this._peerStateByClientId[clientId].bestClientIdVote;
+                if (id in votesByClientId)
+                {
+                    // Count valid client IDs
+                    votesByClientId[id] += 1;
+                }
+            }
+        }
+
+        // Once we've received votes from everyone, we can proceed
+        if (receivedAll)
+        {
+            //TODO: this should all be done by the authority
+            this._declareWinner(votesByClientId);
+            this._setLocalGameState(GameState.ShowWinner);
+        }
+        else
+        {
+            console.log("Unable to declare winner because not all responses have been received...", this._peerStateByClientId);
+        }
+    }
+
+    // Figure out who won and show the winners
+    _declareWinner(votesByClientId)
+    {
+        // What was the highest number of votes
+        let highestVoteCount = Object.values(votesByClientId).reduce((a,b) => Math.max(a,b), -Infinity);
+
+        // Who had the highest number of votes (may be multiple clients in a tie)
+        let winningClientIds = [];
+        for (const [clientId, numVotes] of Object.entries(votesByClientId))
+        {
+            if (numVotes == highestVoteCount)
+            {
+                winningClientIds.push(clientId);
+            }
+        }
+
+        // Reuse slideshows to display winners. Go through each one and disable the losers.
+        console.log(winningClientIds);
+        for (let slideshow of this._candidateSlideshowsContainer.find(".slideshow"))
+        {
+            console.log("- " + $(slideshow).prop("clientId"));
+            if (!winningClientIds.includes($(slideshow).prop("clientId")))
+            {
+                $(slideshow).hide();
+            }
+        }
     }
 
     _setLocalGameState(state)
@@ -574,10 +687,34 @@ class MovieGameScreen extends UIScreen
                 this._submitButton.hide();
                 this._imageCarouselContainer.hide();
                 this._candidateSlideshowsContainer.show();
+                this._voteMovieButton.addClass("button-disabled");  // disable button until clicked
+                this._voteMovieButton.show();
+                this._nextGameButton.hide();
+                break;
+            case GameState.WaitVotes:
+                this._instructions.text("Tallying the Academy's votes...");
+                this._instructions.show();
+                this._movieButtons.hide();
+                this._castMemberContainers.hide();
+                this._submitButton.hide();
+                this._imageCarouselContainer.hide();
+                this._candidateSlideshowsContainer.hide();
+                this._voteMovieButton.hide();
+                this._nextGameButton.hide();
+                break;
+            case GameState.ShowWinner:
+                // Use the candidate slideshow container to show the winner(s)
+                this._instructions.text("And the winner is...");    //TODO: check for tie
+                this._instructions.show();
+                this._movieButtons.hide();
+                this._castMemberContainers.hide();
+                this._submitButton.hide();
+                this._imageCarouselContainer.hide();
+                this._candidateSlideshowsContainer.show();
+                this._voteMovieButton.hide();
+                this._nextGameButton.show();
                 break;
         }
-
-        //TODO: clear timer
     }
 
     // Runs continuously and, if slideshow objects exists, cycles images
@@ -592,6 +729,16 @@ class MovieGameScreen extends UIScreen
         // Schedule next update
         let self = this;
         this._slideshowTimer = window.setTimeout(() => self._updateSlideshow(), 3000);
+    }
+
+    _stopSlideshow()
+    {
+        if (this._slideshowTimer)
+        {
+            clearTimeout(this._slideshowTimer);
+            this._slideshowTimer = null;
+            this._slideshows = [];
+        }
     }
 
     constructor(ourClientId, gameId, gameClientIds, sendMessageFn)
@@ -617,6 +764,8 @@ class MovieGameScreen extends UIScreen
         this._imageCarouselThumbnails = $("#MovieGameScreen").find("img.thumbnail");
         this._selectImageButton = $("#MovieGameScreen #SelectImageButton");
         this._candidateSlideshowsContainer = $("#MovieGameScreen #CandidateSlideshows");
+        this._voteMovieButton = $("#MovieGameScreen #VoteMovieButton");
+        this._nextGameButton = $("#MovieGameScreen #NextGameButton");
 
         this._instructions.hide();
         this._movieButtons.hide();
@@ -624,6 +773,12 @@ class MovieGameScreen extends UIScreen
         this._submitButton.hide();
         this._imageCarouselContainer.hide();
         this._candidateSlideshowsContainer.hide();
+
+        this._nextGameButton.off("click").click(() =>
+        {
+            self._stopSlideshow();
+            self._sendMessageFn(new AuthoritativeStateMessage(SelectGameScreen.name, {}));
+        });
 
         $("#MovieGameScreen").show();
         this._setLocalGameState(GameState.SubmitPrompts);
