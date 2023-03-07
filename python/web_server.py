@@ -349,15 +349,17 @@ if __name__ == "__main__":
     parser.add_argument("--simulated-images", action = "store_true", help = "Simulate image generation")
     options = parser.parse_args()
 
+    web_endpoints = [ "127.0.0.1:7860" ]    #TODO: hard-coded for now
+
     loop = asyncio.new_event_loop()
     tasks = []
     app = web.Application()
-    image_task = ImageDispatcherTask(port = options.image_port) if not options.simulated_images else SimulatedImageDispatcherTask()
+    image_task = ImageDispatcherTask(port = options.image_port, web_endpoints = web_endpoints) if not options.simulated_images else SimulatedImageDispatcherTask()
     app["web_message_handler"] = WebMessageHandler(image_provider = image_task)
     tasks.append(loop.create_task(run_web_server(app = app)))
     tasks.append(loop.create_task(image_task.run()))
     try:
         loop.run_until_complete(asyncio.gather(*tasks))
     except KeyboardInterrupt:
-        pass
+        image_task.stop()
     loop.close()

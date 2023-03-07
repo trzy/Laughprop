@@ -20,6 +20,7 @@ from .image_dispatcher import ImageResult
 class SimulatedImageDispatcherTask:
     def __init__(self):
         super().__init__()
+        self._running = True
         self._result_queue = Queue(maxsize = 0)
 
         # Load images to return
@@ -33,13 +34,16 @@ class SimulatedImageDispatcherTask:
 
     async def run(self):
         print("Starting SIMULATED image dispatcher...")
-        while True:
+        while self._running:
             completed_request = self._try_get_result()
             if completed_request is not None:
                 completion = completed_request[0]
                 result = completed_request[1]
                 await completion(result)
             await asyncio.sleep(0.1)
+
+    def stop(self):
+        self._running = False
 
     def _try_get_result(self) -> ImageResult:
         item = None
@@ -51,6 +55,6 @@ class SimulatedImageDispatcherTask:
 
     async def submit_prompt(self, prompt: str, request_id: str, completion: Callable[[ImageResult], None]):
         random.shuffle(self._dummy_images)
-        result = ImageResult(request_id = request_id, images = self._dummy_images[0:4])
+        result = ImageResult(failed = False, prompt = prompt, request_id = request_id, images = self._dummy_images[0:4])
         await asyncio.sleep(5)  # simulated time delay
         self._result_queue.put(item = (completion, result))
