@@ -143,34 +143,34 @@ class MovieGameScreen extends UIScreen
     {
         "Bloodsport":
         [
-            { filename: "Bloodsport_1.jpg", prompt: "muscular %1 delivers a knockout blow to %2. cinematic shot. canon 5d.", negativePrompt: "distorted face" },
-            { filename: "Bloodsport_1.jpg", prompt: "muscular %1 delivers a knockout blow to %2. cinematic shot. canon 5d.", negativePrompt: "distorted face" },
-            { filename: "Bloodsport_1.jpg", prompt: "muscular %1 delivers a knockout blow to %2. cinematic shot. canon 5d.", negativePrompt: "distorted face" },
-            { filename: "Bloodsport_1.jpg", prompt: "muscular %1 delivers a knockout blow to %2. cinematic shot. canon 5d.", negativePrompt: "distorted face" }
+            { filename: "Bloodsport/Bloodsport_1_FrankDux.jpg", prompt: "%1 wearing a white gi with a japanese garden in the background. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster" },
+            { filename: "Bloodsport/Bloodsport_2_ChongLi.jpg", prompt: "muscular %2 in a headband pointing. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster" },
+            { filename: "Bloodsport/Bloodsport_3_Splits.jpg", prompt: "muscular %1 meditating and performing the splits. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster" },
+            { filename: "Bloodsport/Bloodsport_4_KO.jpg", prompt: "muscular %1 delivers a knockout blow to %2. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster" }
         ],
 
         "The Hangover":
         [
-            { filename: "Bloodsport_1.jpg", prompt: "muscular %1 delivers a knockout blow to %2. cinematic shot. canon 5d.", negativePrompt: "distorted face" },
-            { filename: "Bloodsport_1.jpg", prompt: "muscular %1 delivers a knockout blow to %2. cinematic shot. canon 5d.", negativePrompt: "distorted face" },
-            { filename: "Bloodsport_1.jpg", prompt: "muscular %1 delivers a knockout blow to %2. cinematic shot. canon 5d.", negativePrompt: "distorted face" },
-            { filename: "Bloodsport_1.jpg", prompt: "muscular %1 delivers a knockout blow to %2. cinematic shot. canon 5d.", negativePrompt: "distorted face" }
+            { filename: "Bloodsport/Bloodsport_1_FrankDux.jpg", prompt: "%1 wearing a white gi with a japanese garden in the background. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster" },
+            { filename: "Bloodsport/Bloodsport_2_ChongLi.jpg", prompt: "muscular %2 in a headband pointing. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster" },
+            { filename: "Bloodsport/Bloodsport_3_Splits.jpg", prompt: "muscular %1 meditating and performing the splits. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster" },
+            { filename: "Bloodsport/Bloodsport_4_KO.jpg", prompt: "muscular %1 delivers a knockout blow to %2. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster" }
         ],
 
         "Star Wars":
         [
-            { filename: "Bloodsport_1.jpg", prompt: "muscular %1 delivers a knockout blow to %2. cinematic shot. canon 5d.", negativePrompt: "distorted face" },
-            { filename: "Bloodsport_1.jpg", prompt: "muscular %1 delivers a knockout blow to %2. cinematic shot. canon 5d.", negativePrompt: "distorted face" },
-            { filename: "Bloodsport_1.jpg", prompt: "muscular %1 delivers a knockout blow to %2. cinematic shot. canon 5d.", negativePrompt: "distorted face" },
-            { filename: "Bloodsport_1.jpg", prompt: "muscular %1 delivers a knockout blow to %2. cinematic shot. canon 5d.", negativePrompt: "distorted face" }
+            { filename: "Bloodsport/Bloodsport_1_FrankDux.jpg", prompt: "%1 wearing a white gi with a japanese garden in the background. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster" },
+            { filename: "Bloodsport/Bloodsport_2_ChongLi.jpg", prompt: "muscular %2 in a headband pointing. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster" },
+            { filename: "Bloodsport/Bloodsport_3_Splits.jpg", prompt: "muscular %1 meditating and performing the splits. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster" },
+            { filename: "Bloodsport/Bloodsport_4_KO.jpg", prompt: "muscular %1 delivers a knockout blow to %2. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster" }
         ],
 
         "Step Brothers":
         [
-            { filename: "Bloodsport_1.jpg", prompt: "muscular %1 delivers a knockout blow to %2. cinematic shot. canon 5d.", negativePrompt: "distorted face" },
-            { filename: "Bloodsport_1.jpg", prompt: "muscular %1 delivers a knockout blow to %2. cinematic shot. canon 5d.", negativePrompt: "distorted face" },
-            { filename: "Bloodsport_1.jpg", prompt: "muscular %1 delivers a knockout blow to %2. cinematic shot. canon 5d.", negativePrompt: "distorted face" },
-            { filename: "Bloodsport_1.jpg", prompt: "muscular %1 delivers a knockout blow to %2. cinematic shot. canon 5d.", negativePrompt: "distorted face" }
+            { filename: "StepBrothers/StepBrothers_1_Rules.jpg", prompt: "%2 wearing a red shirt, pointing finger in accusation in a suburban den. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster, bad hands" },
+            { filename: "StepBrothers/StepBrothers_2_Drums.jpg", prompt: "%1 wearing a turquoise shirt fumbling with zipper and standing behind a drum set in a suburban bedroom. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster" },
+            { filename: "StepBrothers/StepBrothers_3_Fight.jpg", prompt: "%2 wearing a red shirt, raising fist with an enraged facial expression, in the front yard of a suburban house. daytime. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster, bad hands" },
+            { filename: "StepBrothers/StepBrothers_4_Portrait.jpg", prompt: "80s style studio family portrait of %1 and %2 staring wistfully at the camera. Dressed in preppy attire. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster, bad hands" }
         ],
     };
 
