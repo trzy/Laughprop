@@ -13,18 +13,34 @@ from aiohttp import web
 import base64
 from io import BytesIO
 import mimetypes
+import os
+import PIL
 import time
 from typing import Dict
 from typing import Tuple
 import weakref
 
 from .web.image_dispatcher import ImageDispatcherTask
+from .web.image_dispatcher import ImageRequestType
+from .web.image_dispatcher import ImageRequest
 from .web.simulated_image_dispatcher import SimulatedImageDispatcherTask
+
 from .networking.message_handling import MessageHandler
 from .networking.message_handling import handler
 from .networking.messages import *
-from .networking.tcp import Session
 from .networking.serialization import LaserTagJSONEncoder
+
+
+###############################################################################
+# Misc. Functions
+###############################################################################
+
+def _load_local_image(filename: str) -> PIL.Image:
+    path = os.path.join("assets", filename)
+    try:
+        return PIL.Image.open(path)
+    except:
+        return None
 
 
 ###############################################################################
@@ -175,6 +191,7 @@ class WebMessageHandler(MessageHandler):
             return
         print("Received txt2img request: Client ID=%s, Request ID=%s, Prompt=%s" % (client_id, msg.request_id, msg.prompt))
 
+        #TODO: factor this out so it isn't duplicated
         async def cache_and_send_result(result):
             encoded_images = []
             i = 0
@@ -188,15 +205,68 @@ class WebMessageHandler(MessageHandler):
                 # Cache it!
                 if game_id not in self._cached_images_by_game_id:
                     self._cached_images_by_game_id[game_id] = []
-                cached_image = CachedImage(request_id = result.request_id, idx = i, data = encoded_image, client_id = client_id)
+                cached_image = CachedImage(request_id = result.request.request_id, idx = i, data = encoded_image, client_id = client_id)
                 self._cached_images_by_game_id[game_id].append(cached_image)
 
                 i += 1
-            response_msg = ImageResponseMessage(request_id = result.request_id, images = encoded_images)
+            response_msg = ImageResponseMessage(request_id = result.request.request_id, images = encoded_images)
             await self._send_message(client_id = client_id, msg = response_msg)
-            print("Sent txt2img response: Client ID=%s, Request ID=%s" % (client_id, result.request_id))
+            print("Sent txt2img response: Client ID=%s, Request ID=%s" % (client_id, result.request.request_id))
 
-        await self._image_provider.submit_prompt(prompt = msg.prompt, request_id = msg.request_id, completion = cache_and_send_result)
+        request = ImageRequest(
+            request_id = msg.request_id,
+            request_type = ImageRequestType.TXT2IMG,
+            prompt = msg.prompt,
+            negative_prompt = "",
+            input_image = None
+        )
+        await self._image_provider.submit_request(request = request, completion = cache_and_send_result)
+
+    @handler(Depth2ImgRequestMessage)
+    async def handle_Depth2ImgRequestMessage(self, session: web.WebSocketResponse, msg: Depth2ImgRequestMessage, timestamp: float):
+        client_id = self._try_lookup_client_id(session = session)
+        game_id = self._try_lookup_game_id(client_id = client_id)
+        input_image = _load_local_image(filename = msg.input_image_filename)
+        if client_id is None:
+            print("Error: Ignoring Depth2ImgRequestMessage because client ID not found for session")
+            return
+        if game_id is None:
+            print("Error: Ignoring DepthImgRequestMessage from client ID %s because it is not part of any current game" % client_id)
+            return
+        if input_image is None:
+            print("Error: Ignoring Depth2ImgRequestMessage from client ID %s because input image %s could not be loaded" % (client_id, msg.input_image_filename))
+        print("Received depth2img request: Client ID=%s, Request ID=%s, Prompt=%s" % (client_id, msg.request_id, msg.prompt))
+
+        #TODO: factor this out so it isn't duplicated
+        async def cache_and_send_result(result):
+            encoded_images = []
+            i = 0
+            for image in result.images:
+                # To Base64
+                buffered = BytesIO()
+                image.save(buffered, format="JPEG")
+                encoded_image = base64.b64encode(buffered.getvalue()).decode(encoding = "ascii")
+                encoded_images.append(encoded_image)
+
+                # Cache it!
+                if game_id not in self._cached_images_by_game_id:
+                    self._cached_images_by_game_id[game_id] = []
+                cached_image = CachedImage(request_id = result.request.request_id, idx = i, data = encoded_image, client_id = client_id)
+                self._cached_images_by_game_id[game_id].append(cached_image)
+
+                i += 1
+            response_msg = ImageResponseMessage(request_id = result.request.request_id, images = encoded_images)
+            await self._send_message(client_id = client_id, msg = response_msg)
+            print("Sent depth2img response: Client ID=%s, Request ID=%s" % (client_id, result.request.request_id))
+
+        request = ImageRequest(
+            request_id = msg.request_id,
+            request_type = ImageRequestType.DEPTH2IMG,
+            prompt = msg.prompt,
+            negative_prompt = msg.negative_prompt,
+            input_image = input_image
+        )
+        await self._image_provider.submit_request(request = request, completion = cache_and_send_result)
 
     @handler(RequestCachedImagesMessage)
     async def handle_RequestCachedImagesMessage(self, session: web.WebSocketResponse, msg: RequestCachedImagesMessage, timestamp: float):
@@ -347,6 +417,8 @@ if __name__ == "__main__":
     parser.add_argument("--port", metavar = "port", type = int, action = "store", default = 8080, help = "Port to run web server on")
     parser.add_argument("--image-port", metavar = "port", type = int, action = "store", default = 6503, help = "Listen for image clients on specified port")
     parser.add_argument("--simulated-images", action = "store_true", help = "Simulate image generation")
+    parser.add_argument("--webapi-txt2img-model", action = "store", default = "v1-5-pruned-emaonly.safetensors", help = "Filename of depth2img model on stable-diffusion-webapi")
+    parser.add_argument("--webapi-depth2img-model", action = "store", default = "512-depth-ema.ckpt", help = "Filename of depth2img model on stable-diffusion-webapi")
     options = parser.parse_args()
 
     web_endpoints = [ "127.0.0.1:7860" ]    #TODO: hard-coded for now
@@ -354,7 +426,15 @@ if __name__ == "__main__":
     loop = asyncio.new_event_loop()
     tasks = []
     app = web.Application()
-    image_task = ImageDispatcherTask(port = options.image_port, web_endpoints = web_endpoints) if not options.simulated_images else SimulatedImageDispatcherTask()
+    if options.simulated_images:
+        image_task = SimulatedImageDispatcherTask()
+    else:
+        image_task = ImageDispatcherTask(
+            port = options.image_port,
+            web_endpoints = web_endpoints,
+            txt2img_model_name = options.webapi_txt2img_model,
+            depth2img_model_name = options.webapi_depth2img_model
+        )
     app["web_message_handler"] = WebMessageHandler(image_provider = image_task)
     tasks.append(loop.create_task(run_web_server(app = app)))
     tasks.append(loop.create_task(image_task.run()))

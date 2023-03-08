@@ -51,6 +51,13 @@ class Txt2ImgRequestMessage:
     request_id: str
 
 @dataclass
+class Depth2ImgRequestMessage:
+    prompt: str
+    negative_prompt: str
+    input_image_filename: str
+    request_id: str
+
+@dataclass
 class ImageResponseMessage:
     request_id: str
     images: List[str]

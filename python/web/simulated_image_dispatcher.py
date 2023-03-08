@@ -14,6 +14,7 @@ from queue import Empty
 import random
 from typing import Callable
 
+from .image_dispatcher import ImageRequest
 from .image_dispatcher import ImageResult
 
 
@@ -53,8 +54,8 @@ class SimulatedImageDispatcherTask:
             pass
         return item
 
-    async def submit_prompt(self, prompt: str, request_id: str, completion: Callable[[ImageResult], None]):
+    async def submit_request(self, request: ImageRequest, completion: Callable[[ImageResult], None]):
         random.shuffle(self._dummy_images)
-        result = ImageResult(failed = False, prompt = prompt, request_id = request_id, images = self._dummy_images[0:4])
+        result = ImageResult(failed = False, images = self._dummy_images[0:4], request = request)
         await asyncio.sleep(5)  # simulated time delay
         self._result_queue.put(item = (completion, result))

@@ -2,7 +2,7 @@
  * www/js/modules/screens/movie_game.mjs
  * Bart Trzynadlowski, 2023
  *
- * Funniest image game UI screen.
+ * Movie game UI screen.
  */
 
 import { UIScreen } from "./ui_screen.mjs";
@@ -13,6 +13,7 @@ import
     AuthoritativeStateMessage,
     PeerStateMessage,
     Txt2ImgRequestMessage,
+    Depth2ImgRequestMessage,
     ImageResponseMessage,
     RequestCachedImagesMessage,
     CachedImagesMessage
@@ -137,6 +138,42 @@ class MovieGameScreen extends UIScreen
         "Step Brothers":    [ "Brennan", "Dale" ]
     };
 
+    // Depth2img input images for each scene in the movie
+    _depth2ImgParamsByMovie =
+    {
+        "Bloodsport":
+        [
+            { filename: "Bloodsport_1.jpg", prompt: "muscular %1 delivers a knockout blow to %2. cinematic shot. canon 5d.", negativePrompt: "distorted face" },
+            { filename: "Bloodsport_1.jpg", prompt: "muscular %1 delivers a knockout blow to %2. cinematic shot. canon 5d.", negativePrompt: "distorted face" },
+            { filename: "Bloodsport_1.jpg", prompt: "muscular %1 delivers a knockout blow to %2. cinematic shot. canon 5d.", negativePrompt: "distorted face" },
+            { filename: "Bloodsport_1.jpg", prompt: "muscular %1 delivers a knockout blow to %2. cinematic shot. canon 5d.", negativePrompt: "distorted face" }
+        ],
+
+        "The Hangover":
+        [
+            { filename: "Bloodsport_1.jpg", prompt: "muscular %1 delivers a knockout blow to %2. cinematic shot. canon 5d.", negativePrompt: "distorted face" },
+            { filename: "Bloodsport_1.jpg", prompt: "muscular %1 delivers a knockout blow to %2. cinematic shot. canon 5d.", negativePrompt: "distorted face" },
+            { filename: "Bloodsport_1.jpg", prompt: "muscular %1 delivers a knockout blow to %2. cinematic shot. canon 5d.", negativePrompt: "distorted face" },
+            { filename: "Bloodsport_1.jpg", prompt: "muscular %1 delivers a knockout blow to %2. cinematic shot. canon 5d.", negativePrompt: "distorted face" }
+        ],
+
+        "Star Wars":
+        [
+            { filename: "Bloodsport_1.jpg", prompt: "muscular %1 delivers a knockout blow to %2. cinematic shot. canon 5d.", negativePrompt: "distorted face" },
+            { filename: "Bloodsport_1.jpg", prompt: "muscular %1 delivers a knockout blow to %2. cinematic shot. canon 5d.", negativePrompt: "distorted face" },
+            { filename: "Bloodsport_1.jpg", prompt: "muscular %1 delivers a knockout blow to %2. cinematic shot. canon 5d.", negativePrompt: "distorted face" },
+            { filename: "Bloodsport_1.jpg", prompt: "muscular %1 delivers a knockout blow to %2. cinematic shot. canon 5d.", negativePrompt: "distorted face" }
+        ],
+
+        "Step Brothers":
+        [
+            { filename: "Bloodsport_1.jpg", prompt: "muscular %1 delivers a knockout blow to %2. cinematic shot. canon 5d.", negativePrompt: "distorted face" },
+            { filename: "Bloodsport_1.jpg", prompt: "muscular %1 delivers a knockout blow to %2. cinematic shot. canon 5d.", negativePrompt: "distorted face" },
+            { filename: "Bloodsport_1.jpg", prompt: "muscular %1 delivers a knockout blow to %2. cinematic shot. canon 5d.", negativePrompt: "distorted face" },
+            { filename: "Bloodsport_1.jpg", prompt: "muscular %1 delivers a knockout blow to %2. cinematic shot. canon 5d.", negativePrompt: "distorted face" }
+        ],
+    };
+
     get className()
     {
         return MovieGameScreen.name;
@@ -245,7 +282,7 @@ class MovieGameScreen extends UIScreen
             $(this._castMemberPrompts[i]).val("");
 
             // Make sure text field listeners are set up
-            $(this._castMemberPrompts[i]).off("input").on("input", e => self._onCastMemberPromptChanged());
+            $(this._castMemberPrompts[i]).off("input").on("input", e => self._onCastMemberPromptChanged(movieName));
         }
         for (let i = 0; i < Math.min(this._castMemberContainers.length, castMemberNames.length); i++)
         {
@@ -257,7 +294,7 @@ class MovieGameScreen extends UIScreen
         this._submitButton.hide();
     }
 
-    _onCastMemberPromptChanged()
+    _onCastMemberPromptChanged(movieName)
     {
         let self = this;
 
@@ -280,7 +317,7 @@ class MovieGameScreen extends UIScreen
         if (allFilledOut)
         {
             this._submitButton.show();
-            this._submitButton.off("click").click(() => self._onSubmitButtonPressed());
+            this._submitButton.off("click").click(() => self._onSubmitButtonPressed(movieName));
         }
         else
         {
@@ -288,18 +325,56 @@ class MovieGameScreen extends UIScreen
         }
     }
 
-    _onSubmitButtonPressed()
+    _onSubmitButtonPressed(movieName)
     {
-        //TODO: we need a special set of messages for this but for now simulate it with multiple requests
-        for (let i = 0; i < 4; i++)
+        if (!(movieName in this._depth2ImgParamsByMovie))
         {
+            console.log("Error: Internal consistency error: movie name not found in depth2img file map: " + movieName);
+            return;
+        }
+
+        // Get cast member names entered by user
+        let newCastMembers = [];
+        for (let i = 0; i < this._castMemberContainers.length; i++)
+        {
+            if ($(this._castMemberContainers[i]).is(":visible"))
+            {
+                newCastMembers.push($(this._castMemberPrompts[i]).val());
+            }
+        }
+        console.log("New cast members:", newCastMembers);
+
+        // Send depth2img requests
+        let params = this._depth2ImgParamsByMovie[movieName];
+        for (let i = 0; i < params.length; i++)
+        {
+            // Generate request ID and prepare space for responses
             let requestId = generateUuid();
             this._imageRequestIds.push(requestId);
             this._imageResponseMessages.push(null);    // make room for response
-            let msg = new Txt2ImgRequestMessage("New cast member name goes here", requestId);
+
+            // Prompts have placeholders that must be replaced with cast member names
+            let prompt = this._insertCastMemberNamesIntoPrompt(params[i].prompt, newCastMembers);
+
+            // Make request
+            let msg = new Depth2ImgRequestMessage(
+                prompt,
+                params[i].negativePrompt,
+                params[i].filename,
+                requestId
+            );
             this._sendMessageFn(msg);
         }
         this._setLocalGameState(GameState.WaitOurImages);
+    }
+
+    _insertCastMemberNamesIntoPrompt(prompt, castMemberNames)
+    {
+        for (let i = 0; i < castMemberNames.length; i++)
+        {
+            prompt = prompt.replace("%" + (i + 1), castMemberNames[i]);
+        }
+        return prompt;
     }
 
     _displayNextSceneForSelection(sceneNumber)

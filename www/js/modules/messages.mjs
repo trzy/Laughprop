@@ -198,6 +198,23 @@ class Txt2ImgRequestMessage
     }
 }
 
+class Depth2ImgRequestMessage
+{
+    __id = "Depth2ImgRequestMessage";
+    prompt;
+    negative_prompt;
+    input_image_filename;
+    request_id;
+
+    constructor(prompt, negative_prompt, input_image_filename, request_id)
+    {
+        this.prompt = prompt;
+        this.negative_prompt = negative_prompt;
+        this.input_image_filename = input_image_filename;
+        this.request_id = request_id;
+    }
+}
+
 class ImageResponseMessage
 {
     __id = "ImageResponseMessage"
@@ -257,6 +274,7 @@ export
     AuthoritativeStateMessage,
     PeerStateMessage,
     Txt2ImgRequestMessage,
+    Depth2ImgRequestMessage,
     ImageResponseMessage,
     RequestCachedImagesMessage,
     CachedImagesMessage
