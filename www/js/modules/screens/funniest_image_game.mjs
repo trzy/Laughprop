@@ -132,7 +132,10 @@ class FunniestImageGameScreen extends UIScreen
     _promptThemes = [
         "Best place to hide in a zombie apocalypse.",
         "A hairy situation.",
-        "Celebrities supplementing their income."
+        "Celebrities supplementing their income.",
+        "Ancient technology.",
+        "Creepy mimes.",
+
     ];
 
     get className()
@@ -251,7 +254,7 @@ class FunniestImageGameScreen extends UIScreen
             return;
         }
         this._imageRequestId = generateUuid();
-        let msg = new Txt2ImgRequestMessage(prompt, this._imageRequestId);
+        let msg = new Txt2ImgRequestMessage(prompt + ". cinematic shot. canon 5d.", this._imageRequestId);
         this._sendMessageFn(msg);
         this._setLocalGameState(GameState.WaitOurImages);
     }
