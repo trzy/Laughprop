@@ -160,12 +160,19 @@ function onJoinGameSelected(gameId)
     sendMessage(new JoinGameMessage(gameId));
 }
 
+//TEMP
+import { Canvas } from "./modules/canvas.mjs";
+var g_canvas;
+
 function main()
 {
     console.log("SDGame loaded");
     hideAllScreens();
     g_currentScreen = new WelcomeScreen(onNewGameSelected, onJoinGameSelected, sendMessage);
     connectToBackend();
+
+    // Test canvas
+    g_canvas = new Canvas();
 }
 
 export { main };
