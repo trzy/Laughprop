@@ -1,0 +1,36 @@
+<!--
+    public/index.html
+    Bart Trzynadlowski, 2023
+
+    Game front end.
+-->
+
+<!DOCTYPE html>
+<html>
+    <head>
+
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">  <!-- responsive layout -->
+
+        <!-- Google Fonts -->
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300italic,700,700italic">
+        <!-- CSS Reset -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.css">
+        <!-- Milligram CSS -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.4.1/milligram.css">
+        <link rel="stylesheet" href="index.css"/>
+
+        <script type="text/javascript" src="js/thirdparty/jquery.2.2.0.min.js"></script>
+        <script type="module">
+            import { main } from "./js/frontend.js";
+            $(document).ready(function()
+            {
+                main();
+            });
+        </script>
+
+    </head>
+
+    <body>
+        <h1 class="title">Laughprop</h1>
+    </body>
+</html>
