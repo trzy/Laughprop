@@ -32,5 +32,48 @@
 
     <body>
         <h1 class="title">Laughprop</h1>
+
+        <!-- Welcome -->
+        <div id="WelcomeScreen" class="screen">  <!-- "screen" class tag must be present on all top-level UI screens -->
+
+            <input id="GameID" type="text" class="" maxlength="4"/>
+
+            <div id="Buttons" class="center-children row">
+                <div id="JoinGameButton" class="button button-disabled column">Join</div>
+                <div id="NewGameButton" class="button button-outline column">New Game</div>
+            </div>
+
+            <div id="StartingNewGameMessage" class="message text-center">
+                <span>Starting new game. Waiting for at least one more player...</span>
+            </div>
+
+            <div id="JoiningGameMessage" class="message text-center">
+                <span>Joining game...</span>
+            </div>
+
+            <div id="FailedToJoinGameMessage" class="message error text-center">
+                <span>Could not join game! Try again.</span>
+            </div>
+
+        </div>
+
+        <!-- Select Game -->
+        <div id="SelectGameScreen" class="screen">
+
+            <input id="GameID" type="text" class="left" maxlength="4" />
+
+            <h3 class="text-center">Select Game</h3>
+
+            <div class="message text-center">
+                <span>Choose a game. When all players have voted, the game will begin.</span>
+            </div>
+
+            <div class="center-children row">
+                <div id="FunniestImageGameButton" class="button column">It's a Mood</div>
+                <div id="MovieGameButton" class="button column">I'd Watch That</div>
+            </div>
+
+        </div>
+
     </body>
 </html>

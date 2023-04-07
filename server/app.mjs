@@ -8,21 +8,93 @@
 
 import express from "express";
 import { WebSocketServer } from "ws";
-import { tryParseMessage, HelloMessage } from "./public/js/modules/messages.mjs";
+import
+{
+    tryParseMessage,
+    HelloMessage,
+    GameStartingStateMessage,
+    FailedToJoinMessage,
+    SelectGameStateMessage
+} from "./public/js/modules/messages.mjs";
+import { generateSessionId } from "./modules/utils.mjs";
 
 
 /**************************************************************************************************
- Message Handling
+ Session and Game State
 **************************************************************************************************/
 
-const handlerByMessageId =
+class Session
 {
-    "HelloMessage": onHelloMessage
+    sessionId;
+    clientIds;  // set of clients
+
+    _socketByClientId;
+
+    tryAddClientIfAccepting(clientId)
+    {
+        this.clientIds.add(clientId);
+        //TODO: when we have state implemented, stop accepting clients after game selected
+        return false;
+    }
+
+    sendMessage(msg)
+    {
+        for (const clientId of this.clientIds)
+        {
+            const socket = _socketByClientId[clientId];
+            if (socket)
+            {
+                sendMessage(socket, msg);
+            }
+        }
+    }
+
+    constructor(sessionId, socketByClientId)
+    {
+        this.sessionId = sessionId;
+        this.clientIds = new Set();
+        this._socketByClientId = socketByClientId;
+    }
+}
+
+const _socketByClientId = {};
+const _sessionById = {};
+
+
+/**************************************************************************************************
+ Socket and Message Handling
+**************************************************************************************************/
+
+const _handlerByMessageId =
+{
+    "HelloMessage": onHelloMessage,
+    "StartNewGameMessage": onStartNewGameMessage,
+    "JoinGameMessage": onJoinGameMessage,
 };
 
 function sendMessage(socket, msg)
 {
     socket.send(JSON.stringify(msg));
+}
+
+function onSocketClosed(socket)
+{
+    let clientId = null;
+
+    for (const [otherClientId, otherSocket] of Object.entries(_socketByClientId))
+    {
+        if  (socket == otherSocket)
+        {
+            clientId = otherClientId;
+        }
+    }
+
+    if (clientId)
+    {
+        delete _socketByClientId[clientId];
+    }
+
+    console.log(`ClientId ${clientId} disconnected. ${Object.keys(_socketByClientId).length} remaining.`);
 }
 
 function onMessageReceived(socket, buffer)
@@ -41,8 +113,7 @@ function onMessageReceived(socket, buffer)
     const msg = tryParseMessage(json);
     if (msg != null)
     {
-        console.log(`Successfully decoded ${msg.__id}`);
-        const handler = handlerByMessageId[msg.__id];
+        const handler = _handlerByMessageId[msg.__id];
         if (handler)
         {
             handler(socket, msg);
@@ -64,6 +135,58 @@ function onHelloMessage(socket, msg)
     sendMessage(socket, new HelloMessage("Hello from Laughprop server"));
 }
 
+function onStartNewGameMessage(socket, msg)
+{
+    // Starts a new game session and also identifies the client for the first time
+    console.log(`New game request: clientId=${msg.clientId}`);
+    if (msg.clientId in _socketByClientId)
+    {
+        console.log(`Error: ClientId=${msg.clientId} already exists. Replacing...`);
+    }
+    _socketByClientId[msg.clientId] = socket;
+
+    let sessionId;
+    do
+    {
+        sessionId = generateSessionId();
+    } while (sessionId in _sessionById);
+    _sessionById[sessionId] = new Session(sessionId);
+    _sessionById[sessionId].tryAddClientIfAccepting(msg.clientId);
+    sendMessage(socket, new GameStartingStateMessage(sessionId));
+
+    console.log(`Created game sessionId=${sessionId}`);
+}
+
+function onJoinGameMessage(socket, msg)
+{
+    // Joins an existing game session and also identifies the client for the first time
+    console.log(`Join game request: clientId=${msg.clientId}`);
+    if (msg.clientId in _socketByClientId)
+    {
+        console.log(`Error: ClientId=${msg.clientId} already exists. Replacing...`);
+    }
+    _socketByClientId[msg.clientId] = socket;
+
+    if (!(msg.sessionId in _sessionById))
+    {
+        console.log(`Error: Uknown sessionId=${msg.sessionId}`);
+        sendMessage(socket, new FailedToJoinMessage());
+    }
+    else
+    {
+        const session = _sessionById[msg.sessionId];
+        if (session.tryAddClientIfAccepting(msg.clientId))
+        {
+            console.log(`Error: Rejected clientId=${msg.clientId} because game is full`);
+            sendMessage(socket, new FailedToJoinMessage());
+        }
+        else
+        {
+            session.sendMessage(new SelectGameStateMessage(msg.sessionId));
+        }
+    }
+}
+
 
 /**************************************************************************************************
  Program Entry Point
@@ -83,4 +206,16 @@ const wsServer = new WebSocketServer({ server: server });
 wsServer.on('connection', socket =>
 {
     socket.on('message', function(buffer) { onMessageReceived(socket, buffer) });
+    socket.onclose = function(event)
+    {
+        if (event.wasClean)
+        {
+            console.log(`Connection closed (code=${event.code}, reason=${event.reason})`);
+        }
+        else
+        {
+            console.log(`Connection died (code=${event.code}, reason=${event.reason})`);
+        }
+        onSocketClosed(socket);
+    };
 });

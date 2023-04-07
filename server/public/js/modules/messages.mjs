@@ -18,8 +18,16 @@ function tryParseMessage(json)
         return null;
     case "HelloMessage":
         return Object.assign(new HelloMessage(), json);
-    case "ClientIDMessage":
-        return Object.assign(new ClientIdMessage(), json);
+    case "StartNewGameMessage":
+        return Object.assign(new StartNewGameMessage(), json);
+    case "JoinGameMessage":
+        return Object.assign(new JoinGameMessage(), json);
+    case "GameStartingStateMessage":
+        return Object.assign(new GameStartingStateMessage(), json);
+    case "FailedToJoinMessage":
+        return Object.assign(new FailedToJoinMessage(), json);
+    case "SelectGameStateMessage":
+        return Object.assign(new SelectGameStateMessage(), json);
     }
 }
 
@@ -32,22 +40,66 @@ class HelloMessage
     {
         this.message = message;
     }
-};
+}
 
-class ClientIdMessage
+class StartNewGameMessage
 {
-    __id = "ClientIDMessage";
-    client_id;
+    __id = "StartNewGameMessage";
+    clientId;
 
-    constructor(client_id)
+    constructor(clientId)
     {
-        this.client_id = client_id;
+        this.clientId = clientId;
     }
-};
+}
+
+class JoinGameMessage
+{
+    __id = "JoinGameMessage";
+    sessionId;
+    clientId;
+
+    constructor(sessionId, clientId)
+    {
+        this.sessionId = sessionId;
+        this.clientId = clientId;
+    }
+}
+
+class GameStartingStateMessage
+{
+    __id = "GameStartingStateMessage";
+    sessionId;
+
+    constructor(sessionId)
+    {
+        this.sessionId = sessionId;
+    }
+}
+
+class FailedToJoinMessage
+{
+    __id = "FailedToJoinMessage";
+}
+
+class SelectGameStateMessage
+{
+    __id = "SelectGameStateMessage";
+    sessionId;
+
+    constructor(sessionId)
+    {
+        this.sessionId = sessionId;
+    }
+}
 
 export
 {
     tryParseMessage,
     HelloMessage,
-    ClientIdMessage
+    StartNewGameMessage,
+    JoinGameMessage,
+    GameStartingStateMessage,
+    FailedToJoinMessage,
+    SelectGameStateMessage,
 };

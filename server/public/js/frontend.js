@@ -5,13 +5,25 @@
  * Main program module for game front end.
  */
 
+import { generateUuid } from "./modules/utils.mjs";
 import
 {
     tryParseMessage,
     HelloMessage,
+    StartNewGameMessage,
+    JoinGameMessage,
+    GameStartingStateMessage,
+    FailedToJoinMessage,
+    SelectGameStateMessage
 } from "./modules/messages.mjs";
 
+
+/**************************************************************************************************
+ Connection Management
+**************************************************************************************************/
+
 var _socket = null;
+var _clientId = generateUuid();
 
 function connectToBackend()
 {
@@ -51,6 +63,8 @@ function connectToBackend()
             {
                 console.log(`Server says hello: ${msg.message}`);
             }
+
+            handleMessageFromServer(msg);
         }
         else
         {
@@ -88,10 +102,129 @@ function sendMessage(msg)
     }
 }
 
+
+/**************************************************************************************************
+ Welcome Screen
+
+ Host or connect to a game.
+**************************************************************************************************/
+
+function hideAllScreens()
+{
+    $(".screen").each(function(index, element)
+    {
+        $(element).hide();
+    });
+}
+
+function onNewGameButtonClicked()
+{
+    sendMessage(new StartNewGameMessage(_clientId));
+}
+
+function onJoinGameButtonClicked()
+{
+    const sessionId = $("#GameID").val();
+    sendMessage(new JoinGameMessage(sessionId, _clientId));
+    console.log("got here");
+}
+
+function onGameStartingState(msg)
+{
+    $(".message").each(function(index, element)
+    {
+        $(element).hide();
+    });
+    $("#StartingNewGameMessage").show();
+    $("#WelcomeScreen #Buttons").hide();
+    $("#GameID").val(msg.sessionId);
+
+}
+
+function onFailedToJoinState()
+{
+    $(".message").each(function(index, element)
+    {
+        $(element).hide();
+    });
+    $("#FailedToJoinGameMessage").show();
+}
+
+function onGameIdTextFieldChanged()
+{
+    const gameIdField = $("#WelcomeScreen #GameID");
+    const joinGameButton = $("#JoinGameButton");
+
+    gameIdField.val(gameIdField.val().toUpperCase());
+    if (gameIdField.val().length == 4)
+    {
+        // Join button becomes selectable when we have 4 characters
+        joinGameButton.removeClass("button-disabled");
+        joinGameButton.off("click").click(function() { onJoinGameButtonClicked(); });
+    }
+    else
+    {
+        joinGameButton.addClass("button-disabled");
+        joinGameButton.off("click");
+    }
+}
+
+function initWelcomeScreen()
+{
+    $("#NewGameButton").off("click").click(function() { onNewGameButtonClicked(); });
+    $("#JoinGameButton").addClass("button-disabled");
+    $("#WelcomeScreen #GameID").val("");
+    $("#WelcomeScreen #GameID").val("").off("input").on("input", function(e) { onGameIdTextFieldChanged(); });
+    $(".message").each(function(index, element)
+    {
+        $(element).hide();
+    });
+    $("#WelcomeScreen").show();
+}
+
+
+/**************************************************************************************************
+ Select Game Screen
+**************************************************************************************************/
+
+function onSelectGameState(msg)
+{
+    hideAllScreens();
+    $("#SelectGameScreen").show();
+    $("#SelectGameScreen #GameID").val(msg.sessionId);
+}
+
+/**************************************************************************************************
+ State Handling
+**************************************************************************************************/
+
+function handleMessageFromServer(msg)
+{
+    if (msg instanceof GameStartingStateMessage)
+    {
+        onGameStartingState(msg);
+    }
+    else if (msg instanceof FailedToJoinMessage)
+    {
+        onFailedToJoinState();
+    }
+    else if (msg instanceof SelectGameStateMessage)
+    {
+        onSelectGameState(msg);
+    }
+}
+
+
+/**************************************************************************************************
+ Entry Point
+**************************************************************************************************/
+
 function main()
 {
     console.log("Laughprop loaded");
+    hideAllScreens();
     connectToBackend();
+    initWelcomeScreen();
 }
 
 export { main };
