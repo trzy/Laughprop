@@ -14,7 +14,8 @@ import
     JoinGameMessage,
     GameStartingStateMessage,
     FailedToJoinMessage,
-    SelectGameStateMessage
+    SelectGameStateMessage,
+    ChooseGameMessage
 } from "./modules/messages.mjs";
 
 
@@ -187,11 +188,41 @@ function initWelcomeScreen()
  Select Game Screen
 **************************************************************************************************/
 
+const _funniestImageGameButton = $("#SelectGameScreen #FunniestImageGameButton")
+const _movieGameButton = $("#SelectGameScreen #MovieGameButton");
+const _gameButtons = [ _funniestImageGameButton, _movieGameButton ];
+
+function onFunniestImageGameButtonClicked()
+{
+    deselectAllButtons();
+    _funniestImageGameButton.addClass("button-selected");
+    sendMessage(new ChooseGameMessage("It's A Mood"));
+}
+
+function onMovieGameButtonClicked()
+{
+    deselectAllButtons();
+    _movieGameButton.addClass("button-selected");
+    sendMessage(new ChooseGameMessage("I'd Watch That"));
+}
+
+function deselectAllButtons()
+{
+    for (const button of _gameButtons)
+    {
+        button.removeClass("button-selected");
+    }
+}
+
 function onSelectGameState(msg)
 {
     hideAllScreens();
     $("#SelectGameScreen").show();
     $("#SelectGameScreen #GameID").val(msg.sessionId);
+
+    _funniestImageGameButton.off("click").click(function() { onFunniestImageGameButtonClicked() });
+    _movieGameButton.off("click").click(function() { onMovieGameButtonClicked() });
+    deselectAllButtons();
 }
 
 /**************************************************************************************************

@@ -28,6 +28,8 @@ function tryParseMessage(json)
         return Object.assign(new FailedToJoinMessage(), json);
     case "SelectGameStateMessage":
         return Object.assign(new SelectGameStateMessage(), json);
+    case "ChooseGameMessage":
+        return Object.assign(new ChooseGameMessage(), json);
     }
 }
 
@@ -93,6 +95,17 @@ class SelectGameStateMessage
     }
 }
 
+class ChooseGameMessage
+{
+    __id = "ChooseGameMessage";
+    gameName;
+
+    constructor(gameName)
+    {
+        this.gameName = gameName;
+    }
+}
+
 export
 {
     tryParseMessage,
@@ -102,4 +115,5 @@ export
     GameStartingStateMessage,
     FailedToJoinMessage,
     SelectGameStateMessage,
+    ChooseGameMessage
 };

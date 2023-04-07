@@ -23,18 +23,41 @@ import { generateSessionId } from "./modules/utils.mjs";
  Session and Game State
 **************************************************************************************************/
 
+const _sessionById = {};
+
 class Session
 {
     sessionId;
     clientIds;  // set of clients
 
-    _socketByClientId;
+    _gameVoteByClientId;    // game selections, when this is not empty, voting is in progress
 
     tryAddClientIfAccepting(clientId)
     {
         this.clientIds.add(clientId);
         //TODO: when we have state implemented, stop accepting clients after game selected
         return false;
+    }
+
+    removeClient(clientId)
+    {
+        this.clientIds.delete(clientId);
+        delete this._gameVoteByClientId[clientId];
+        //TODO: abort game if too few clients remaining?
+
+        // If we are in game selection state, try tallying vote
+        this._tryTallyGameVotes();
+    }
+
+    hasClient(clientId)
+    {
+        return this.clientIds.has(clientId);
+    }
+
+    voteForGame(clientId, gameName)
+    {
+        this._gameVoteByClientId[clientId] = gameName;
+        this._tryTallyGameVotes();
     }
 
     sendMessage(msg)
@@ -49,16 +72,69 @@ class Session
         }
     }
 
-    constructor(sessionId, socketByClientId)
+    _tryTallyGameVotes()
     {
+        const numClientsVoted = Object.keys(this._gameVoteByClientId).length;
+        if (numClientsVoted == this.clientIds.size && this.clientIds.size > 1)
+        {
+            const gameName = this._getVotedGame();
+            this._startGame(gameName);
+            this._gameVoteByClientId = {};
+        }
+    }
+
+    _getVotedGame()
+    {
+        const numVotesByGame = {};
+        let highestVotedGame = null;
+        let highestVoteCount = 0;
+
+        for (const [clientId, gameName] of Object.entries(this._gameVoteByClientId))
+        {
+            if (!(gameName in numVotesByGame))
+            {
+                numVotesByGame[gameName] = 1;
+            }
+            else
+            {
+                numVotesByGame[gameName] += 1;
+            }
+
+            if (numVotesByGame[gameName] > highestVoteCount)
+            {
+                highestVoteCount = numVotesByGame[gameName];
+                highestVotedGame = gameName;
+            }
+        }
+
+        return highestVotedGame;
+    }
+
+    _startGame(gameName)
+    {
+        console.log(`Starting game: ${gameName}`);
+    }
+
+    constructor(sessionId)
+    {
+        this.game = null;
         this.sessionId = sessionId;
         this.clientIds = new Set();
-        this._socketByClientId = socketByClientId;
+        this._gameVoteByClientId = {};
     }
 }
 
-const _socketByClientId = {};
-const _sessionById = {};
+function tryGetSessionByClientId(clientId)
+{
+    for (const [sessionId, session] of Object.entries(_sessionById))
+    {
+        if (session.hasClient(clientId))
+        {
+            return session;
+        }
+    }
+    return null;
+}
 
 
 /**************************************************************************************************
@@ -70,14 +146,12 @@ const _handlerByMessageId =
     "HelloMessage": onHelloMessage,
     "StartNewGameMessage": onStartNewGameMessage,
     "JoinGameMessage": onJoinGameMessage,
+    "ChooseGameMessage": onChooseGameMessage
 };
 
-function sendMessage(socket, msg)
-{
-    socket.send(JSON.stringify(msg));
-}
+const _socketByClientId = {};
 
-function onSocketClosed(socket)
+function tryGetClientIdBySocket(socket)
 {
     let clientId = null;
 
@@ -89,9 +163,25 @@ function onSocketClosed(socket)
         }
     }
 
+    return clientId;
+}
+
+function sendMessage(socket, msg)
+{
+    socket.send(JSON.stringify(msg));
+}
+
+function onSocketClosed(socket)
+{
+    let clientId = tryGetClientIdBySocket(socket);
+
     if (clientId)
     {
         delete _socketByClientId[clientId];
+        for (const session of Object.values(_sessionById))
+        {
+            session.removeClient(clientId);
+        }
     }
 
     console.log(`ClientId ${clientId} disconnected. ${Object.keys(_socketByClientId).length} remaining.`);
@@ -185,6 +275,26 @@ function onJoinGameMessage(socket, msg)
             session.sendMessage(new SelectGameStateMessage(msg.sessionId));
         }
     }
+}
+
+function onChooseGameMessage(socket, msg)
+{
+    let clientId = tryGetClientIdBySocket(socket);
+    if (!clientId)
+    {
+        console.log(`Error: Received ChooseGameMessage on a socket with no associated clientId`);
+        return;
+    }
+
+    const session = tryGetSessionByClientId(clientId);
+    if (!session)
+    {
+        console.log(`Error: Received ChooseGameMessage from clientId=${clientId} but unable to find session`);
+        return;
+    }
+
+    console.log(`Client clientId=${clientId} chose game: ${msg.gameName}`);
+    session.voteForGame(clientId, msg.gameName);
 }
 
 
