@@ -7,14 +7,18 @@
  *
  * TODO Next:
  * ----------
- * - Detect client left game and drop their state, allowing game to continue.
+ * - Stop allowing clients to join after game in progress.
+ * - If only one player remaining, terminate game. Womp womp.
  * - Allow game to end by including a command to explicitly drop client from game, cleaning up session
  *   and all other objects as needed.
  * - Return to lobby.
  * - Real image generation
  * - Movie game.
  * - Socket reconnect on front-end? Don't remove dead clients until after some timeout here, allowing
- *   them to resume? If we do this, must perform replay.
+ *   them to resume? If we do this, must perform replay. Alternatively, can remove clients immediately
+ *   but preserve their scripting contexts in an "archive" for resumption. Not sure if this is possible
+ *   when the game has moved on too far. Indeed, may need to just avoid purging until after some timeout
+ *   has been exceeded (say, 10 seconds).
  */
 
 //import http from "http";
@@ -78,7 +82,8 @@ class Game
     _globalScriptCtx;
     _perClientScriptCtx = {};
 
-    // Clients (players in the game)
+    // Clients (players in the game). This is a reference to the Session's client set and must be
+    // monitored for clients dropping.
     _clientIds;
 
     // Image cache
@@ -137,6 +142,17 @@ class Game
 
     _runNextPerClient()
     {
+        // First, purge dead clients
+        for (const clientId in this._perClientScriptCtx)
+        {
+            const clientExists = this._clientIds.has(clientId);
+            if (!clientExists)
+            {
+                delete this._perClientScriptCtx[clientId];
+            }
+        }
+
+        // Execute per-client scripts
         for (const [clientId, scriptCtx] of Object.entries(this._perClientScriptCtx))
         {
            this._runUntilBlocked(scriptCtx, clientId);
