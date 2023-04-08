@@ -30,6 +30,10 @@ function tryParseMessage(json)
         return Object.assign(new SelectGameStateMessage(), json);
     case "ChooseGameMessage":
         return Object.assign(new ChooseGameMessage(), json);
+    case "ClientUIMessage":
+        return Object.assign(new ClientUIMessage(), json);
+    case "ClientInputMessage":
+        return Object.assign(new ClientInputMessage(), json);
     }
 }
 
@@ -106,6 +110,28 @@ class ChooseGameMessage
     }
 }
 
+class ClientUIMessage
+{
+    __id = "ClientUIMessage";
+    command;
+
+    constructor(command)
+    {
+        this.command = command;
+    }
+}
+
+class ClientInputMessage
+{
+    __id = "ClientInputMessage";
+    inputs;     // dictionary of (stateVarName, value) pairs
+
+    constructor(inputs)
+    {
+        this.inputs = inputs;
+    }
+}
+
 export
 {
     tryParseMessage,
@@ -115,5 +141,7 @@ export
     GameStartingStateMessage,
     FailedToJoinMessage,
     SelectGameStateMessage,
-    ChooseGameMessage
+    ChooseGameMessage,
+    ClientUIMessage,
+    ClientInputMessage
 };

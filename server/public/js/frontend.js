@@ -15,7 +15,9 @@ import
     GameStartingStateMessage,
     FailedToJoinMessage,
     SelectGameStateMessage,
-    ChooseGameMessage
+    ChooseGameMessage,
+    ClientUIMessage,
+    ClientInputMessage
 } from "./modules/messages.mjs";
 
 
@@ -127,7 +129,6 @@ function onJoinGameButtonClicked()
 {
     const sessionId = $("#GameID").val();
     sendMessage(new JoinGameMessage(sessionId, _clientId));
-    console.log("got here");
 }
 
 function onGameStartingState(msg)
@@ -225,8 +226,217 @@ function onSelectGameState(msg)
     deselectAllButtons();
 }
 
+
 /**************************************************************************************************
- State Handling
+ Game Flow Handling
+**************************************************************************************************/
+
+const _gameScreen = $("#GameScreen");
+
+const _gameTitleContainer = $("#GameTitleContainer");
+const _gameTitle = $("#GameTitleContainer .game-title");
+
+const _instructionsContainer = $("#InstructionsContainer");
+const _instructions = $("#Instructions");
+
+const _promptContainer = $("#PromptContainer");
+const _promptDescription = $("#PromptDescription");
+const _promptTextField = $("#PromptTextField");
+const _promptSubmitButton = $("#PromptContainer #SubmitButton");
+
+const _carouselContainer = $("#Carousel");
+const _imageCarouselThumbnails = $("#Carousel").find("img.thumbnail");
+const _imageSelected = $("#Carousel #SelectedImage");
+const _selectImageButton = $("#Carousel #SelectImageButton");
+
+const _candidatesContainer = $("#CandidateImages");
+const _voteImageButton = $("#CandidateImages #VoteImageButton");
+
+const _winningImagesContainer = $("#WinningImage");
+const _returnToLobbyButton = $("#WinningImage #ReturnToLobbyButton");
+
+const _containers = [ _gameTitleContainer, _instructionsContainer, _promptContainer, _carouselContainer, _candidatesContainer, _winningImagesContainer ];
+
+function onImageThumbnailClicked(idx)
+{
+    if (idx >= _imageCarouselThumbnails.length)
+    {
+        return;
+    }
+
+    // De-select all thumbnails
+    for (let i = 0; i < _imageCarouselThumbnails.length; i++)
+    {
+        $(_imageCarouselThumbnails[i]).removeClass("image-selected");
+    }
+
+    // Select our thumbnail
+    $(_imageCarouselThumbnails[idx]).addClass("image-selected");
+
+    // Replace image preview with selection
+    _imageSelected.attr("src", _imageCarouselThumbnails[idx].src);
+    _imageSelected.prop("uuid", $(_imageCarouselThumbnails[idx]).prop("uuid"));
+}
+
+function onCandidateImageClicked(img, uuid)
+{
+    // De-select all
+    $("#CandidateImages img").removeClass("image-selected");
+
+    // Select image
+    img.addClass("image-selected");
+
+    // Enable voting button to send selected image back
+    _voteImageButton.off("click").click(function()
+    {
+        const msg = new ClientInputMessage({ "@@vote": uuid });
+        sendMessage(msg);
+    })
+    _voteImageButton.removeClass("button-disabled");
+}
+
+function onClientUIMessage(msg)
+{
+    switch (msg.command.command)
+    {
+    case "clear_game_div":
+        hideAllScreens();
+        for (const container of _containers)
+        {
+            container.hide();
+        }
+        _gameScreen.show();
+        break;
+
+    case "show_title":
+        _gameTitle.text(msg.command.param);
+        _gameTitleContainer.show();
+        break;
+
+    case "show_instructions":
+        _instructions.text(msg.command.param);
+        _instructionsContainer.show();
+        break;
+
+    case "show_prompt_field":
+        _promptDescription.text(msg.command.param);
+        _promptContainer.show();
+        _promptSubmitButton.off("click").click(function()
+        {
+            const msg = new ClientInputMessage({ "@@prompt": _promptTextField.val() });
+            sendMessage(msg);
+        });
+        break;
+
+    case "hide_prompt_field":
+        _promptContainer.hide();
+        break;
+
+    case "show_image_carousel":
+    {
+        const imageByUuid = msg.command.param;
+        const numImages = Object.keys(imageByUuid).length;
+
+        // Place images in selection carousel
+        const maxImages = Math.min(numImages, _imageCarouselThumbnails.length);
+        let i = 0;
+        for (const [uuid, image] of Object.entries(imageByUuid))
+        {
+            if (i < maxImages)
+            {
+                let idx = i;    // need block-scope copy to create function below
+                _imageCarouselThumbnails[i].src = "data:image/jpeg;base64," + image;
+                $(_imageCarouselThumbnails[i]).prop("uuid", uuid);
+                $(_imageCarouselThumbnails[i]).off("click").click(function() { onImageThumbnailClicked(idx) });
+            }
+            else
+            {
+                _imageCarouselThumbnails[i].src = "";
+            }
+
+            i += 1;
+        }
+
+        // Select first one
+        onImageThumbnailClicked(0);
+
+        // Send selection back to server
+        _selectImageButton.off("click").click(function()
+        {
+            const selectedImageId = _imageSelected.prop("uuid");
+            const msg = new ClientInputMessage({ "@@selected_image_id": selectedImageId });
+            sendMessage(msg);
+        });
+
+        _carouselContainer.show();
+        break;
+    }
+
+    case "hide_image_carousel":
+        _carouselContainer.hide();
+        break;
+
+    case "show_candidate_images":
+    {
+        _candidatesContainer.show();
+
+        const imageByUuid = msg.command.param;
+
+        // Remove any existing images
+        $("#CandidateImages img").remove();
+
+        // Create image elements that when clicked
+        for (const [uuid, image] of Object.entries(imageByUuid))
+        {
+            let img = $("<img>");
+            img.attr("src", "data:image/jpeg;base64," + image);
+            img.prop("uuid", uuid);
+            _candidatesContainer.prepend(img);
+            img.click(function() { onCandidateImageClicked(img, uuid); });
+        }
+
+        // Disable the voting button until clicked
+        _voteImageButton.addClass("button-disabled");
+        _voteImageButton.show();
+
+        break;
+    }
+
+    case "hide_candidate_images":
+        _candidatesContainer.hide();
+        break;
+
+    case "show_winning_images":
+    {
+        _winningImagesContainer.show();
+
+        const imageByUuid = msg.command.param;
+
+        // Remove any existing images
+        $("#WinningImage img").remove();
+
+        // Create image elements that when clicked
+        for (const [uuid, image] of Object.entries(imageByUuid))
+        {
+            let img = $("<img>");
+            img.attr("src", "data:image/jpeg;base64," + image);
+            img.prop("uuid", uuid);
+            _winningImagesContainer.prepend(img);
+        }
+
+        // Is there a tie?
+        //TODO: print that we have a tie
+
+        // Proceed back to game selection
+        //TODO: implement functionality to leave game and return to main screen
+        break;
+    }
+    }
+}
+
+
+/**************************************************************************************************
+ Message Handling
 **************************************************************************************************/
 
 function handleMessageFromServer(msg)
@@ -242,6 +452,10 @@ function handleMessageFromServer(msg)
     else if (msg instanceof SelectGameStateMessage)
     {
         onSelectGameState(msg);
+    }
+    else if (msg instanceof ClientUIMessage)
+    {
+        onClientUIMessage(msg);
     }
 }
 
