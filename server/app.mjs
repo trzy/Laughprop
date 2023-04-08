@@ -7,9 +7,6 @@
  *
  * TODO Next:
  * ----------
- * - Allow game to end by including a command to explicitly drop client from game, cleaning up session
- *   and all other objects as needed.
- * - Return to lobby.
  * - Clean up state variable substitution. Probably should rename the function to "expand" and support
  *   @/@@ notation for full variable substitution vs. %/%% for string replacement.
  * - Real image generation.
@@ -790,6 +787,7 @@ const _handlerByMessageId =
     "HelloMessage": onHelloMessage,
     "StartNewGameMessage": onStartNewGameMessage,
     "JoinGameMessage": onJoinGameMessage,
+    "LeaveGameMessage": onLeaveGameMessage,
     "ChooseGameMessage": onChooseGameMessage,
     "ClientInputMessage": onClientInputMessage
 };
@@ -962,6 +960,27 @@ function onJoinGameMessage(socket, msg)
             sendMessage(socket, new FailedToJoinMessage("Sorry, you're too late. That game has already started."));
         }
     }
+}
+
+function onLeaveGameMessage(socket, msg)
+{
+    // Leave existing session
+    let clientId = tryGetClientIdBySocket(socket);
+    if (!clientId)
+    {
+        console.log(`Error: Received LeaveGameMessage on a socket with no associated clientId`);
+        return;
+    }
+
+    const session = tryGetSessionByClientId(clientId);
+    if (!session)
+    {
+        console.log(`Error: Received LeaveGameMessage from clientId=${clientId} but unable to find session`);
+        return;
+    }
+
+    removeClientFromSession(session, clientId);
+    console.log(`Client clientId=${clientId} left session: ${session.id()}`);
 }
 
 function onChooseGameMessage(socket, msg)

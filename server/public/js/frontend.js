@@ -12,6 +12,7 @@ import
     HelloMessage,
     StartNewGameMessage,
     JoinGameMessage,
+    LeaveGameMessage,
     GameStartingStateMessage,
     FailedToJoinMessage,
     ReturnToLobbyMessage,
@@ -194,7 +195,7 @@ function initWelcomeScreen()
  Return to Lobby Request
 **************************************************************************************************/
 
-function onReturnToLobbyMessage(gameInterruptedReason)
+function onReturnToLobby(gameInterruptedReason)
 {
     hideAllScreens();
     initWelcomeScreen();
@@ -449,7 +450,13 @@ function onClientUIMessage(msg)
         //TODO: print that we have a tie
 
         // Proceed back to game selection
-        //TODO: implement functionality to leave game and return to main screen
+        _returnToLobbyButton.off("click").click(function()
+        {
+            // Leave game and return to lobby
+            const msg = new LeaveGameMessage();
+            sendMessage(msg);
+            onReturnToLobby(null);  // no error
+        });
         break;
     }
     }
@@ -472,7 +479,7 @@ function handleMessageFromServer(msg)
     }
     else if (msg instanceof ReturnToLobbyMessage)
     {
-        onReturnToLobbyMessage(msg.gameInterruptedReason);
+        onReturnToLobby(msg.gameInterruptedReason);
     }
     else if (msg instanceof SelectGameStateMessage)
     {

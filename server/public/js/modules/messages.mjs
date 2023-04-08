@@ -22,6 +22,8 @@ function tryParseMessage(json)
         return Object.assign(new StartNewGameMessage(), json);
     case "JoinGameMessage":
         return Object.assign(new JoinGameMessage(), json);
+    case "LeaveGameMessage":
+        return Object.assign(new LeaveGameMessage(), json);
     case "GameStartingStateMessage":
         return Object.assign(new GameStartingStateMessage(), json);
     case "FailedToJoinMessage":
@@ -72,6 +74,11 @@ class JoinGameMessage
         this.sessionId = sessionId;
         this.clientId = clientId;
     }
+}
+
+class LeaveGameMessage
+{
+    __id = "LeaveGameMessage";
 }
 
 class GameStartingStateMessage
@@ -158,6 +165,7 @@ export
     HelloMessage,
     StartNewGameMessage,
     JoinGameMessage,
+    LeaveGameMessage,
     GameStartingStateMessage,
     FailedToJoinMessage,
     ReturnToLobbyMessage,
