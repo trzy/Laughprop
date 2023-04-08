@@ -7,7 +7,6 @@
  *
  * TODO Next:
  * ----------
- * - Rename flow -> scripting context or something.
  * - Detect client left game and drop their state, allowing game to continue.
  * - Allow game to end by including a command to explicitly drop client from game, cleaning up session
  *   and all other objects as needed.
@@ -33,6 +32,7 @@ import
     ClientUIMessage,
 } from "./public/js/modules/messages.mjs";
 import { generateSessionId, tallyVotes } from "./modules/utils.mjs";
+import * as themed_image_game from "./modules/games/themed_image.mjs";
 
 
 /**************************************************************************************************
@@ -41,94 +41,14 @@ import { generateSessionId, tallyVotes } from "./modules/utils.mjs";
 
 const _sessionById = {};
 
-const _themedImageGameFlow = [
-    // Begin by clearing state and display area on client side
-    { action: "init_state" },
-    { action: "client_ui", ui: { command: "clear_game_div" } },
-    { action: "client_ui", ui: { command: "show_title", param: "It's a Mood" } },
-
-    // Select a random theme
-    {
-        action:             "random_choice",
-        writeToStateVar:    "@theme",
-        choices:            [
-            "Best place to hide in a zombie apocalypse.",
-            "A hairy situation.",
-            "Celebrities supplementing their income.",
-            "Ancient technology.",
-            "Creepy mimes.",
-        ]
-    },
-    { action: "client_ui", ui: { command: "show_instructions", param: "Describe a scene that best fits the theme." } },
-    { action: "client_ui", ui: { command: "show_prompt_field", param: "@theme" } },
-
-    // Each user must submit a prompt and select a resulting image to submit
-    { action: "per_client", actions:
-        [
-            // Wait for prompt
-            { action: "wait_for_state_var", stateVar: "@@prompt" },
-
-            // Generate images
-            { action: "client_ui", ui: { command: "show_instructions", param: "Just a moment. Generating images..." } },
-            { action: "client_ui", ui: { command: "hide_prompt_field" } },
-            { action: "txt2img", prompt: "@@prompt", writeToStateVar: "@@image_candidates" },
-
-            // Wait for image candidates to arrive
-            { action: "wait_for_state_var", stateVar: "@@image_candidates" },
-
-            // Send them to client for display
-            { action: "client_ui", ui: { command: "show_instructions", param: "Select a generated image to use." } },
-            { action: "client_ui", ui: { command: "show_image_carousel", param: "@@image_candidates" } },
-
-            // Wait for user selection
-            { action: "wait_for_state_var", stateVar: "@@selected_image_id" },
-
-            // Return to waiting for everyone else
-            { action: "client_ui", ui: { command: "hide_image_carousel" } },
-            { action: "client_ui", ui: { command: "show_instructions", param: "Hang tight while everyone else makes their selections..." } },
-        ]
-    },
-
-    // Wait for everyone to have made a submission
-    { action: "wait_for_state_var_all_users", stateVar: "@@selected_image_id" },
-
-    // Display everyone's images for voting
-    { action: "gather_client_state_into_set", clientStateVar: "@@selected_image_id", writeToStateVar: "@selected_image_ids" },
-    { action: "gather_images_into_map", fromStateVar: "@selected_image_ids", writeToStateVar: "@selected_images" },
-    { action: "client_ui", ui: { command: "show_candidate_images", param: "@selected_images" } },
-    { action: "client_ui", ui: { command: "show_instructions", param: "Vote for the winner!" } },
-
-    // Each user must vote
-    { action: "per_client", actions:
-        [
-            // Wait for vote
-            { action: "wait_for_state_var", stateVar: "@@vote" },
-
-            // Wait for everyone else
-            { action: "client_ui", ui: { command: "hide_candidate_images" } },
-            { action: "client_ui", ui: { command: "show_instructions", param: "Waiting for everyone to vote..." } },
-        ]
-    },
-
-    // Wait for everyone to vote
-    { action: "wait_for_state_var_all_users", stateVar: "@@vote" },
-
-    // Count votes and determine winner
-    { action: "gather_client_state_into_array", clientStateVar: "@@vote", writeToStateVar: "@votes" },
-    { action: "vote", stateVar: "@votes", writeToStateVar: "@winning_image_ids" },
-    { action: "gather_images_into_map", fromStateVar: "@winning_image_ids", writeToStateVar: "@winning_images" },
-    { action: "client_ui", ui: { command: "show_winning_images", param: "@winning_images" } },
-    { action: "client_ui", ui: { command: "show_instructions", param: "And the winner is..." } },
-];
-
-class GameFlowState
+class ScriptingContext
 {
     state = {};
 
     _actions;
     _actionIdx = 0;
 
-    getCurrentAction()
+    getCurrentScriptAction()
     {
         return this._actionIdx < this._actions.length ? this._actions[this._actionIdx] : null;
     }
@@ -154,13 +74,15 @@ class GameFlowState
 
 class Game
 {
-    // Game flow
-    _globalFlow;
-    _perClientFlow = {};
+    // Game scripting contexts
+    _globalScriptCtx;
+    _perClientScriptCtx = {};
 
+    // Clients (players in the game)
     _clientIds;
 
-    _imageByUuid = {};  // image cache
+    // Image cache
+    _imageByUuid = {};
 
     start()
     {
@@ -169,7 +91,7 @@ class Game
 
     isFinished()
     {
-        return this._globalFlow.isFinished();
+        return this._globalScriptCtx.isFinished();
     }
 
     receiveInputFromClient(clientId, inputs)
@@ -180,9 +102,9 @@ class Game
             this._writeToStateVar(clientId, stateVar, value);
         }
 
-        for (const [clientId, flow] of Object.entries(this._perClientFlow))
+        for (const [clientId, scriptCtx] of Object.entries(this._perClientScriptCtx))
         {
-           console.log(`${clientId} -> ${JSON.stringify(Object.keys(flow.state))}`);
+           console.log(`${clientId} -> ${JSON.stringify(Object.keys(scriptCtx.state))}`);
         }
 
         // Try to advance scripting engine
@@ -210,31 +132,31 @@ class Game
         this._runNextPerClient();
 
         // Next, run global actions
-        this._runUntilBlocked(this._globalFlow, null);
+        this._runUntilBlocked(this._globalScriptCtx, null);
     }
 
     _runNextPerClient()
     {
-        for (const [clientId, flow] of Object.entries(this._perClientFlow))
+        for (const [clientId, scriptCtx] of Object.entries(this._perClientScriptCtx))
         {
-           this._runUntilBlocked(flow, clientId);
+           this._runUntilBlocked(scriptCtx, clientId);
         }
     }
 
-    _runUntilBlocked(flow, clientId)
+    _runUntilBlocked(scriptCtx, clientId)
     {
         let canProceed = true;
-        while (canProceed && !flow.isFinished())
+        while (canProceed && !scriptCtx.isFinished())
         {
-            const action = flow.getCurrentAction();
+            const action = scriptCtx.getCurrentScriptAction();
             canProceed = this._execute(action, clientId);
             if (canProceed)
             {
-                flow.goToNext();
+                scriptCtx.goToNext();
             }
         }
 
-        if (flow.isFinished())
+        if (scriptCtx.isFinished())
         {
             console.log("Finished execution of script");
         }
@@ -242,14 +164,7 @@ class Game
 
     _execute(action, clientId)
     {
-        if (clientId)
-        {
-            console.log(`-- ${action.action} - clientId=${clientId}`);
-        }
-        else
-        {
-            console.log(`-- ${action.action}`);
-        }
+        console.log(`-- Ctx=${!clientId ? "Global" : clientId} -- ${action.action}`);
 
         switch (action.action)
         {
@@ -290,17 +205,17 @@ class Game
             }
             else
             {
-                const flow = this._perClientFlow[clientId];
-                if (!flow)
+                const scriptCtx = this._perClientScriptCtx[clientId];
+                if (!scriptCtx)
                 {
-                    console.log(`Error: No per-client game flow exists for clientId=${clientId}`);
+                    console.log(`Error: No per-client script context exists for clientId=${clientId}`);
                 }
                 else
                 {
                     const name = variable.slice(2);
                     if (name.length > 0)
                     {
-                        flow.state[name] = value;
+                        scriptCtx.state[name] = value;
                     }
                     else
                     {
@@ -315,7 +230,7 @@ class Game
             const name = variable.slice(1);
             if (name.length > 0)
             {
-                this._globalFlow.state[name] = value;
+                this._globalScriptCtx.state[name] = value;
             }
             else
             {
@@ -339,17 +254,17 @@ class Game
             }
             else
             {
-                const flow = this._perClientFlow[clientId];
-                if (!flow)
+                const scriptCtx = this._perClientScriptCtx[clientId];
+                if (!scriptCtx)
                 {
-                    console.log(`Error: No per-client game flow exists for clientId=${clientId}`);
+                    console.log(`Error: No per-client script context exists for clientId=${clientId}`);
                 }
                 else
                 {
                     const name = variable.slice(2);
                     if (name.length > 0)
                     {
-                        return name in flow.state;
+                        return name in scriptCtx.state;
                     }
                     else
                     {
@@ -364,7 +279,7 @@ class Game
             const name = variable.slice(1);
             if (name.length > 0)
             {
-                return name in this._globalFlow.state;
+                return name in this._globalScriptCtx.state;
             }
             else
             {
@@ -386,21 +301,21 @@ class Game
             }
             else
             {
-                const flow = this._perClientFlow[clientId];
-                if (!flow)
+                const scriptCtx = this._perClientScriptCtx[clientId];
+                if (!scriptCtx)
                 {
-                    console.log(`Error: No per-client game flow exists for clientId=${clientId}`);
+                    console.log(`Error: No per-client script context exists for clientId=${clientId}`);
                 }
                 else
                 {
                     const name = variable.slice(2);
                     if (name.length > 0)
                     {
-                        if (!(name in flow.state))
+                        if (!(name in scriptCtx.state))
                         {
                             console.log(`Error: Cannot read missing client state variable for clientId=${clientId}: ${variable}`);
                         }
-                        return flow.state[name];
+                        return scriptCtx.state[name];
                     }
                     else
                     {
@@ -415,11 +330,11 @@ class Game
             const name = variable.slice(1);
             if (name.length > 0)
             {
-                if (!(name in this._globalFlow.state))
+                if (!(name in this._globalScriptCtx.state))
                 {
                     console.log(`Error: Cannot read missing global state variable: ${variable}`);
                 }
-                return this._globalFlow.state[name];
+                return this._globalScriptCtx.state[name];
             }
             else
             {
@@ -436,10 +351,10 @@ class Game
 
     _do_init_state()
     {
-        this._globalFlow.state = {};
-        for (const [_, flow] of Object.entries(this._perClientFlow))
+        this._globalScriptCtx.state = {};
+        for (const [_, scriptCtx] of Object.entries(this._perClientScriptCtx))
         {
-            flow.state = {};
+            scriptCtx.state = {};
         }
         return true;
     }
@@ -472,10 +387,10 @@ class Game
 
     _do_per_client(action)
     {
-        // Set up new per-client flows
+        // Set up new per-client scripting contexts
         for (const clientId of this._clientIds)
         {
-            this._perClientFlow[clientId] = new GameFlowState(action.actions);
+            this._perClientScriptCtx[clientId] = new ScriptingContext(action.actions);
         }
 
         // Kick it off
@@ -603,7 +518,7 @@ class Game
 
     constructor(actions, clientIds)
     {
-        this._globalFlow = new GameFlowState(actions);
+        this._globalScriptCtx = new ScriptingContext(actions);
         this._clientIds = clientIds;
     }
 }
@@ -717,7 +632,7 @@ class Session
         {
         default:
         case "It's a Mood":
-            this._game = new Game(_themedImageGameFlow, this._clientIds);
+            this._game = new Game(themed_image_game.script, this._clientIds);
             this._game.start();
             break;
         }
