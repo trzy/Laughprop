@@ -18,6 +18,12 @@ function generateSessionId()
     return result;
 }
 
+// Randomly selects a value from the given array.
+function randomChoice(values)
+{
+    return values[Math.floor(Math.random() * values.length)];
+}
+
 // Votes are an array of values. The result is also an array in case there is a tie.
 function tallyVotes(votes)
 {
@@ -54,4 +60,4 @@ function tallyVotes(votes)
     return winningValues;
 }
 
-export { generateSessionId, tallyVotes }
+export { generateSessionId, randomChoice, tallyVotes }

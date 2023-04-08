@@ -7,7 +7,6 @@
  *
  * TODO Next:
  * ----------
- * - Clean up game voting code. Just use the util function.
  * - If only one player remaining, terminate game. Womp womp.
  * - Allow game to end by including a command to explicitly drop client from game, cleaning up session
  *   and all other objects as needed.
@@ -35,7 +34,7 @@ import
     SelectGameStateMessage,
     ClientUIMessage,
 } from "./public/js/modules/messages.mjs";
-import { generateSessionId, tallyVotes } from "./modules/utils.mjs";
+import { generateSessionId, randomChoice, tallyVotes } from "./modules/utils.mjs";
 import * as themed_image_game from "./modules/games/themed_image.mjs";
 
 
@@ -396,8 +395,7 @@ class Game
 
     _do_random_choice(action, clientId)
     {
-        const choice = action.choices[Math.floor(Math.random() * action.choices.length)];
-        this._writeToStateVar(clientId, action.writeToStateVar, choice);
+        this._writeToStateVar(clientId, action.writeToStateVar, randomChoice(action.choices));
         return true;
     }
 
@@ -564,8 +562,8 @@ class Session
         delete this._gameVoteByClientId[clientId];
         //TODO: abort game if too few clients remaining?
 
-        // If we are in game selection state, try tallying vote
-        this._tryTallyGameVotes();
+        // If we are in game selection state, try tallying vote and start game
+        this._tryStartGame();
     }
 
     hasClient(clientId)
@@ -576,7 +574,7 @@ class Session
     voteForGame(clientId, gameName)
     {
         this._gameVoteByClientId[clientId] = gameName;
-        this._tryTallyGameVotes();
+        this._tryStartGame();
     }
 
     receiveInputFromClient(clientId, inputs)
@@ -608,7 +606,7 @@ class Session
         }
     }
 
-    _tryTallyGameVotes()
+    _tryStartGame()
     {
         const numClientsVoted = Object.keys(this._gameVoteByClientId).length;
         if (numClientsVoted == this._clientIds.size && this._clientIds.size > 1)
@@ -621,29 +619,9 @@ class Session
 
     _getVotedGame()
     {
-        const numVotesByGame = {};
-        let highestVotedGame = null;
-        let highestVoteCount = 0;
-
-        for (const [clientId, gameName] of Object.entries(this._gameVoteByClientId))
-        {
-            if (!(gameName in numVotesByGame))
-            {
-                numVotesByGame[gameName] = 1;
-            }
-            else
-            {
-                numVotesByGame[gameName] += 1;
-            }
-
-            if (numVotesByGame[gameName] > highestVoteCount)
-            {
-                highestVoteCount = numVotesByGame[gameName];
-                highestVotedGame = gameName;
-            }
-        }
-
-        return highestVotedGame;
+        const gameNames = Object.values(this._gameVoteByClientId);  // array of game names
+        const winningGames = tallyVotes(gameNames);
+        return winningGames.length == 1 ? winningGames[0] : randomChoice(winningGames);
     }
 
     _startGame(gameName)
