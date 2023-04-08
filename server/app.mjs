@@ -7,6 +7,7 @@
  *
  * TODO Next:
  * ----------
+ * - Rename flow -> scripting context or something.
  * - Detect client left game and drop their state, allowing game to continue.
  * - Allow game to end by including a command to explicitly drop client from game, cleaning up session
  *   and all other objects as needed.
