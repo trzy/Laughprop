@@ -14,6 +14,7 @@ import
     JoinGameMessage,
     GameStartingStateMessage,
     FailedToJoinMessage,
+    ReturnToLobbyMessage,
     SelectGameStateMessage,
     ChooseGameMessage,
     ClientUIMessage,
@@ -133,6 +134,8 @@ function onJoinGameButtonClicked()
 
 function onGameStartingState(msg)
 {
+    hideAllScreens();
+    initWelcomeScreen();
     $(".message").each(function(index, element)
     {
         $(element).hide();
@@ -149,8 +152,8 @@ function onFailedToJoinState(reason)
     {
         $(element).hide();
     });
-    $("#FailedToJoinGameMessage span").text(reason);
-    $("#FailedToJoinGameMessage").show();
+    $("#GameErrorMessage span").text(reason);
+    $("#GameErrorMessage").show();
 }
 
 function onGameIdTextFieldChanged()
@@ -182,7 +185,24 @@ function initWelcomeScreen()
     {
         $(element).hide();
     });
+    $("#WelcomeScreen #Buttons").show();
     $("#WelcomeScreen").show();
+}
+
+
+/**************************************************************************************************
+ Return to Lobby Request
+**************************************************************************************************/
+
+function onReturnToLobbyMessage(gameInterruptedReason)
+{
+    hideAllScreens();
+    initWelcomeScreen();
+    if (gameInterruptedReason)
+    {
+        $("#GameErrorMessage span").text(gameInterruptedReason);
+        $("#GameErrorMessage").show();
+    }
 }
 
 
@@ -449,6 +469,10 @@ function handleMessageFromServer(msg)
     else if (msg instanceof FailedToJoinMessage)
     {
         onFailedToJoinState(msg.reason);
+    }
+    else if (msg instanceof ReturnToLobbyMessage)
+    {
+        onReturnToLobbyMessage(msg.gameInterruptedReason);
     }
     else if (msg instanceof SelectGameStateMessage)
     {

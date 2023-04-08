@@ -7,11 +7,12 @@
  *
  * TODO Next:
  * ----------
- * - If only one player remaining, terminate game. Womp womp.
  * - Allow game to end by including a command to explicitly drop client from game, cleaning up session
  *   and all other objects as needed.
  * - Return to lobby.
- * - Real image generation
+ * - Clean up state variable substitution. Probably should rename the function to "expand" and support
+ *   @/@@ notation for full variable substitution vs. %/%% for string replacement.
+ * - Real image generation.
  * - Movie game.
  * - Socket reconnect on front-end? Don't remove dead clients until after some timeout here, allowing
  *   them to resume? If we do this, must perform replay. Alternatively, can remove clients immediately
@@ -31,6 +32,7 @@ import
     HelloMessage,
     GameStartingStateMessage,
     FailedToJoinMessage,
+    ReturnToLobbyMessage,
     SelectGameStateMessage,
     ClientUIMessage,
 } from "./public/js/modules/messages.mjs";
@@ -544,10 +546,15 @@ class Session
     _gameVoteByClientId = {};   // game selections, when this is not empty, voting is in progress
     _game;
 
+    id()
+    {
+        return this._sessionId;
+    }
+
     // Returns true if client was accepted into game session, otherwise false if game is full.
     tryAddClientIfAccepting(clientId)
     {
-        if (this._game)
+        if (this.isGameInProgress())
         {
             // Game in progress, reject.
             return false;
@@ -560,15 +567,33 @@ class Session
     {
         this._clientIds.delete(clientId);
         delete this._gameVoteByClientId[clientId];
-        //TODO: abort game if too few clients remaining?
 
         // If we are in game selection state, try tallying vote and start game
-        this._tryStartGame();
+        if (this.isGameSelectionInProgress())
+        {
+            this._tryStartGame();
+        }
     }
 
     hasClient(clientId)
     {
         return this._clientIds.has(clientId);
+    }
+
+    numClients()
+    {
+        return this._clientIds.size;
+    }
+
+    isGameInProgress()
+    {
+        return this._game != null && !this._game.isFinished();
+    }
+
+    isGameSelectionInProgress()
+    {
+        // Game selection occurs only before any game has ever been chosen and played
+        return !this._game;
     }
 
     voteForGame(clientId, gameName)
@@ -577,20 +602,38 @@ class Session
         this._tryStartGame();
     }
 
+    resetVotes()
+    {
+        this._gameVoteByClientId = {};
+    }
+
     receiveInputFromClient(clientId, inputs)
     {
+        // Pass to game, which makes it tick
         if (this._game)
         {
             this._game.receiveInputFromClient(clientId, inputs);
+
+            // Once finished, remove session
+            if (!this.isGameInProgress())
+            {
+                terminateSession(this, null);
+            }
         }
     }
 
     receiveImageResponse(clientId, destStateVar, imageByUuid)
     {
-        // Pass to game
+        // Pass to game, which makes it tick
         if (this._game)
         {
             this._game.receiveImageResponse(clientId, destStateVar, imageByUuid);
+
+            // Once finished, remove session
+            if (!this.isGameInProgress())
+            {
+                terminateSession(this, null);
+            }
         }
     }
 
@@ -646,7 +689,7 @@ class Session
 
 function tryGetSessionByClientId(clientId)
 {
-    for (const [sessionId, session] of Object.entries(_sessionById))
+    for (const [_, session] of Object.entries(_sessionById))
     {
         if (session.hasClient(clientId))
         {
@@ -654,6 +697,53 @@ function tryGetSessionByClientId(clientId)
         }
     }
     return null;
+}
+
+// Terminates a session. If the game ended normally (in which case players will have returned to
+// lobby), gameInterruptedReason is null and no message to the clients will be sent. Otherwise,
+// a return-to-lobby request is sent to clients with the interruption reason.
+function terminateSession(session, gameInterruptedReason)
+{
+    for (const [sessionId, otherSession] of Object.entries(_sessionById))
+    {
+        if (session == otherSession)
+        {
+            delete _sessionById[sessionId];
+        }
+    }
+
+    // Force remaining clients to return to lobby if the session was interrupted
+    if (gameInterruptedReason)
+    {
+        const msg = new ReturnToLobbyMessage(gameInterruptedReason);
+        session.sendMessage(msg);
+        console.log(`Terminated sessionId=${session.id()} because game was interrupted: ${gameInterruptedReason}`);
+    }
+    else
+    {
+        console.log(`Terminated sessionId=${session.id()} normally`);
+    }
+}
+
+function removeClientFromSession(session, clientId)
+{
+    session.removeClient(clientId);
+    if (session.numClients() <= 0)
+    {
+        terminateSession(session, null);
+    }
+    else if (session.numClients() <= 1 && session.isGameSelectionInProgress())
+    {
+        // Players backed out of game selection state and we are down to 1. Back out of
+        // selection screen. Reset session state to clear any game selection logic.
+        session.sendMessage(new GameStartingStateMessage(session.id()))
+        session.resetVotes();
+    }
+    else if (session.numClients() <= 1 && session.isGameInProgress())
+    {
+        // Too few players remaining in game, terminate session
+        terminateSession(session, "Game aborted because too many players left or disconnected.");
+    }
 }
 
 
@@ -739,6 +829,7 @@ function sendMessageToClient(clientId, msg)
     }
 }
 
+// clientIds must be a set
 function sendMessageToClients(clientIds, msg)
 {
     for (const clientId of clientIds)
@@ -756,7 +847,7 @@ function onSocketClosed(socket)
         delete _socketByClientId[clientId];
         for (const session of Object.values(_sessionById))
         {
-            session.removeClient(clientId);
+            removeClientFromSession(session, clientId);
         }
     }
 
@@ -811,13 +902,25 @@ function onStartNewGameMessage(socket, msg)
     }
     _socketByClientId[msg.clientId] = socket;
 
+    // Generate unique session ID
     let sessionId;
     do
     {
         sessionId = generateSessionId();
     } while (sessionId in _sessionById);
-    _sessionById[sessionId] = new Session(sessionId);
-    _sessionById[sessionId].tryAddClientIfAccepting(msg.clientId);
+
+    // Remove client from other sessions (should not be necessary but in case there is some issue
+    // with detecting socket disconnects, etc.)
+    for (const [_, session] of Object.entries(_sessionById))
+    {
+        removeClientFromSession(session, msg.clientId);
+    }
+
+    // Create session
+    const session = new Session(sessionId);
+    session.tryAddClientIfAccepting(msg.clientId);
+    _sessionById[sessionId] = session;
+
     sendMessage(socket, new GameStartingStateMessage(sessionId));
 
     console.log(`Created game sessionId=${sessionId}`);
@@ -840,6 +943,14 @@ function onJoinGameMessage(socket, msg)
     }
     else
     {
+        // Remove client from other sessions (should not be necessary but in case there is some issue
+        // with detecting socket disconnects, etc.)
+        for (const [_, session] of Object.entries(_sessionById))
+        {
+            removeClientFromSession(session, msg.clientId);
+        }
+
+        // Add client to session
         const session = _sessionById[msg.sessionId];
         if (session.tryAddClientIfAccepting(msg.clientId))
         {

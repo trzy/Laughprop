@@ -26,6 +26,8 @@ function tryParseMessage(json)
         return Object.assign(new GameStartingStateMessage(), json);
     case "FailedToJoinMessage":
         return Object.assign(new FailedToJoinMessage(), json);
+    case "ReturnToLobbyMessage":
+        return Object.assign(new ReturnToLobbyMessage(), json);
     case "SelectGameStateMessage":
         return Object.assign(new SelectGameStateMessage(), json);
     case "ChooseGameMessage":
@@ -94,6 +96,18 @@ class FailedToJoinMessage
     }
 }
 
+class ReturnToLobbyMessage
+{
+    __id = "ReturnToLobbyMessage";
+    gameInterruptedReason;
+
+    // gameInterruptedReason may be null, indicating normal termination
+    constructor(reason)
+    {
+        this.gameInterruptedReason = reason;
+    }
+}
+
 class SelectGameStateMessage
 {
     __id = "SelectGameStateMessage";
@@ -146,6 +160,7 @@ export
     JoinGameMessage,
     GameStartingStateMessage,
     FailedToJoinMessage,
+    ReturnToLobbyMessage,
     SelectGameStateMessage,
     ChooseGameMessage,
     ClientUIMessage,
