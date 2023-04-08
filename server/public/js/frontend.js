@@ -143,12 +143,13 @@ function onGameStartingState(msg)
 
 }
 
-function onFailedToJoinState()
+function onFailedToJoinState(reason)
 {
     $(".message").each(function(index, element)
     {
         $(element).hide();
     });
+    $("#FailedToJoinGameMessage span").text(reason);
     $("#FailedToJoinGameMessage").show();
 }
 
@@ -447,7 +448,7 @@ function handleMessageFromServer(msg)
     }
     else if (msg instanceof FailedToJoinMessage)
     {
-        onFailedToJoinState();
+        onFailedToJoinState(msg.reason);
     }
     else if (msg instanceof SelectGameStateMessage)
     {

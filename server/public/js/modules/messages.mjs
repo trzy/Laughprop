@@ -86,6 +86,12 @@ class GameStartingStateMessage
 class FailedToJoinMessage
 {
     __id = "FailedToJoinMessage";
+    reason;
+
+    constructor(reason)
+    {
+        this.reason = reason;
+    }
 }
 
 class SelectGameStateMessage

@@ -7,7 +7,7 @@
  *
  * TODO Next:
  * ----------
- * - Stop allowing clients to join after game in progress.
+ * - Clean up game voting code. Just use the util function.
  * - If only one player remaining, terminate game. Womp womp.
  * - Allow game to end by including a command to explicitly drop client from game, cleaning up session
  *   and all other objects as needed.
@@ -546,11 +546,16 @@ class Session
     _gameVoteByClientId = {};   // game selections, when this is not empty, voting is in progress
     _game;
 
+    // Returns true if client was accepted into game session, otherwise false if game is full.
     tryAddClientIfAccepting(clientId)
     {
+        if (this._game)
+        {
+            // Game in progress, reject.
+            return false;
+        }
         this._clientIds.add(clientId);
-        //TODO: when we have state implemented, stop accepting clients after game selected
-        return false;
+        return true;
     }
 
     removeClient(clientId)
@@ -853,19 +858,19 @@ function onJoinGameMessage(socket, msg)
     if (!(msg.sessionId in _sessionById))
     {
         console.log(`Error: Uknown sessionId=${msg.sessionId}`);
-        sendMessage(socket, new FailedToJoinMessage());
+        sendMessage(socket, new FailedToJoinMessage("Invalid game code. Maybe the game is finished or you mis-typed a zero as an 'O'?"));
     }
     else
     {
         const session = _sessionById[msg.sessionId];
         if (session.tryAddClientIfAccepting(msg.clientId))
         {
-            console.log(`Error: Rejected clientId=${msg.clientId} because game is full`);
-            sendMessage(socket, new FailedToJoinMessage());
+            session.sendMessage(new SelectGameStateMessage(msg.sessionId));
         }
         else
         {
-            session.sendMessage(new SelectGameStateMessage(msg.sessionId));
+            console.log(`Error: Rejected clientId=${msg.clientId} because game is full`);
+            sendMessage(socket, new FailedToJoinMessage("Sorry, you're too late. That game has already started."));
         }
     }
 }
