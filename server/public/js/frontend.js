@@ -321,42 +321,68 @@ function onClientUIMessage(msg)
 {
     switch (msg.command.command)
     {
-    case "clear_game_div":
+    case "init_game":
         hideAllScreens();
         for (const container of _containers)
         {
             container.hide();
         }
+        _promptContainer.hide();
+        _carouselContainer.hide();
         _gameScreen.show();
         break;
 
-    case "show_title":
-        _gameTitle.text(msg.command.param);
-        _gameTitleContainer.show();
-        break;
-
-    case "show_instructions":
-        _instructions.text(msg.command.param);
-        _instructionsContainer.show();
-        break;
-
-    case "show_prompt_field":
-        _promptDescription.text(msg.command.param);
-        _promptContainer.show();
-        _promptSubmitButton.off("click").click(function()
+    case "title":
+        if (msg.command.param)
         {
-            const msg = new ClientInputMessage({ "@@prompt": _promptTextField.val() });
-            sendMessage(msg);
-        });
+            _gameTitle.text(msg.command.param);
+            _gameTitleContainer.show();
+        }
+        else
+        {
+            _gameTitleContainer.hide();
+        }
         break;
 
-    case "hide_prompt_field":
-        _promptContainer.hide();
+    case "instructions":
+        if (msg.command.param)
+        {
+            _instructions.text(msg.command.param);
+            _instructionsContainer.show();
+        }
+        else
+        {
+            _instructionsContainer.hide();
+        }
         break;
 
-    case "show_image_carousel":
+    case "prompt_widget":
+        if (msg.command.param)
+        {
+            _promptDescription.text(msg.command.param);
+            _promptContainer.show();
+            _promptSubmitButton.off("click").click(function()
+            {
+                const msg = new ClientInputMessage({ "@@prompt": _promptTextField.val() });
+                sendMessage(msg);
+            });
+        }
+        else
+        {
+            _promptContainer.hide();
+        }
+        break;
+
+    case "image_carousel_widget":
     {
         const imageByUuid = msg.command.param;
+
+        if (!imageByUuid)
+        {
+            _carouselContainer.hide();
+            break;
+        }
+
         const numImages = Object.keys(imageByUuid).length;
 
         // Place images in selection carousel
@@ -394,15 +420,17 @@ function onClientUIMessage(msg)
         break;
     }
 
-    case "hide_image_carousel":
-        _carouselContainer.hide();
-        break;
-
-    case "show_candidate_images":
+    case "candidate_images_widget":
     {
-        _candidatesContainer.show();
-
         const imageByUuid = msg.command.param;
+
+        if (!imageByUuid)
+        {
+            _candidatesContainer.hide();
+            break;
+        }
+
+        _candidatesContainer.show();
 
         // Remove any existing images
         $("#CandidateImages img").remove();
@@ -424,15 +452,17 @@ function onClientUIMessage(msg)
         break;
     }
 
-    case "hide_candidate_images":
-        _candidatesContainer.hide();
-        break;
-
-    case "show_winning_images":
+    case "winning_images_widget":
     {
-        _winningImagesContainer.show();
-
         const imageByUuid = msg.command.param;
+
+        if (!imageByUuid)
+        {
+            _winningImagesContainer.hide();
+            break;
+        }
+
+        _winningImagesContainer.show();
 
         // Remove any existing images
         $("#WinningImage img").remove();
