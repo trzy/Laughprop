@@ -107,10 +107,6 @@ body {
     text-align: center;
 }
 
-/*
- * WelcomeScreen
- */
-
 #GameID {
     text-align: center;
     font-size: 5vw;
@@ -118,16 +114,7 @@ body {
     margin-top: 4rem;
 }
 
-/*
- * SelectGameScreen
- */
-
-
-/*
- * FunniestImageGameScreen
- */
-
-#FunniestImageGameScreen .theme-description {
+.prompt-description {
     font-weight: bold;
     background: black;
     color: white;
@@ -138,18 +125,14 @@ body {
     border-radius: 4px;
 }
 
-#FunniestImageGameScreen .prompt {
+.prompt {
     font-weight: bold;
     color: black;
     resize: vertical;
     height: 8rem;
 }
 
-/*
- * MovieGameScreen
- */
-
-#MovieGameScreen .row
+#MultiSelectMultiPrompt .row
 {
     display: flex;
     flex-direction: row;
@@ -157,7 +140,7 @@ body {
     width: 100%;
 }
 
-#MovieGameScreen .column
+#MultiSelectMultiPrompt .column
 {
     display: flex;
     flex-direction: column;

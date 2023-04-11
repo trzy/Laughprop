@@ -7,9 +7,9 @@
  *
  * TODO Next:
  * ----------
- * - Fix CSS.
  * - Transmit movie name and display it above each slideshow and who it features
  * - Real image generation.
+ * - Fix CSS (centering of candidate images).
  * - Socket reconnect on front-end? Don't remove dead clients until after some timeout here, allowing
  *   them to resume? If we do this, must perform replay. Alternatively, can remove clients immediately
  *   but preserve their scripting contexts in an "archive" for resumption. Not sure if this is possible
