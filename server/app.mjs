@@ -34,6 +34,7 @@ import
     ClientUIMessage,
 } from "./public/js/modules/messages.mjs";
 import { generateSessionId, randomChoice, tallyVotes } from "./modules/utils.mjs";
+import * as variable_expansion from "./modules/variable_expansion.mjs";
 import * as themed_image_game from "./modules/games/themed_image.mjs";
 
 
@@ -210,157 +211,88 @@ class Game
 
     _writeToStateVar(clientId, variable, value)
     {
+        // Get local and global state
+        const globalState = this._globalScriptCtx.state;
+        let localState = null;
+        if (clientId)
+        {
+            const scriptCtx = this._perClientScriptCtx[clientId];
+            if (scriptCtx)
+            {
+                localState = scriptCtx.state;
+            }
+        }
+
         if (variable.startsWith("@@"))
         {
-            // Client-local variable
-            if (clientId == null)
+            if (localState)
             {
-                console.log(`Error: ClientId is null. Cannot write client-local variable: ${variable}`);
+                localState[variable] = value;
             }
             else
             {
-                const scriptCtx = this._perClientScriptCtx[clientId];
-                if (!scriptCtx)
-                {
-                    console.log(`Error: No per-client script context exists for clientId=${clientId}`);
-                }
-                else
-                {
-                    const name = variable.slice(2);
-                    if (name.length > 0)
-                    {
-                        scriptCtx.state[name] = value;
-                    }
-                    else
-                    {
-                        console.log(`Error: Invalid state variable name: ${variable}`);
-                    }
-                }
+                console.log(`Error: ClientId is null. Cannot write client-local variable: ${variable}`);
             }
         }
         else if (variable.startsWith("@"))
         {
-            // Global variable
-            const name = variable.slice(1);
-            if (name.length > 0)
-            {
-                this._globalScriptCtx.state[name] = value;
-            }
-            else
-            {
-                console.log(`Error: Invalid state variable name: ${variable}`);
-            }
+            globalState[variable] = value;
         }
         else
         {
-            console.log(`Error: Invalid state variable name: ${variable}`);
+            console.log(`Error: Invalid state variable name: ${variable}. Must begin with '@' or '@@'.`);
         }
     }
 
     _checkStateVarExists(clientId, variable)
     {
+        // Get local and global state
+        const globalState = this._globalScriptCtx.state;
+        let localState = null;
+        if (clientId)
+        {
+            const scriptCtx = this._perClientScriptCtx[clientId];
+            if (scriptCtx)
+            {
+                localState = scriptCtx.state;
+            }
+        }
+
         if (variable.startsWith("@@"))
         {
-            // Client-local variable
-            if (clientId == null)
+            if (localState)
             {
-                console.log(`Error: ClientId is null. Cannot test client-local variable: ${variable}`);
+                return variable in localState;
             }
             else
             {
-                const scriptCtx = this._perClientScriptCtx[clientId];
-                if (!scriptCtx)
-                {
-                    console.log(`Error: No per-client script context exists for clientId=${clientId}`);
-                }
-                else
-                {
-                    const name = variable.slice(2);
-                    if (name.length > 0)
-                    {
-                        return name in scriptCtx.state;
-                    }
-                    else
-                    {
-                        console.log(`Error: Invalid state variable name: ${variable}`);
-                    }
-                }
+                console.log(`Error: ClientId is null. Cannot test client-local variable: ${variable}`);
             }
         }
         else if (variable.startsWith("@"))
         {
-            // Global variable
-            const name = variable.slice(1);
-            if (name.length > 0)
-            {
-                return name in this._globalScriptCtx.state;
-            }
-            else
-            {
-                console.log(`Error: Invalid state variable name: ${variable}`);
-            }
+            return variable in globalState;
         }
 
         return false;
     }
 
-    _substituteStateVar(clientId, variable)
+    _expandStateVar(clientId, variable)
     {
-        if (variable.startsWith("@@"))
+        // Get local and global state
+        const globalState = this._globalScriptCtx.state;
+        let localState = null;
+        if (clientId)
         {
-            // Client-local variable
-            if (clientId == null)
+            const scriptCtx = this._perClientScriptCtx[clientId];
+            if (scriptCtx)
             {
-                console.log(`Error: ClientId is null. Cannot read client-local variable: ${variable}`);
+                localState = scriptCtx.state;
             }
-            else
-            {
-                const scriptCtx = this._perClientScriptCtx[clientId];
-                if (!scriptCtx)
-                {
-                    console.log(`Error: No per-client script context exists for clientId=${clientId}`);
-                }
-                else
-                {
-                    const name = variable.slice(2);
-                    if (name.length > 0)
-                    {
-                        if (!(name in scriptCtx.state))
-                        {
-                            console.log(`Error: Cannot read missing client state variable for clientId=${clientId}: ${variable}`);
-                        }
-                        return scriptCtx.state[name];
-                    }
-                    else
-                    {
-                        console.log(`Error: Invalid state variable name: ${variable}`);
-                    }
-                }
-            }
-        }
-        else if (variable.startsWith("@"))
-        {
-            // Global variable
-            const name = variable.slice(1);
-            if (name.length > 0)
-            {
-                if (!(name in this._globalScriptCtx.state))
-                {
-                    console.log(`Error: Cannot read missing global state variable: ${variable}`);
-                }
-                return this._globalScriptCtx.state[name];
-            }
-            else
-            {
-                console.log(`Error: Invalid state variable name: ${variable}`);
-            }
-        }
-        else
-        {
-            return variable;
         }
 
-        return null;
+        // Perform expansion
+        return variable_expansion.expand(variable, globalState, localState);
     }
 
     _do_init_state()
@@ -376,7 +308,7 @@ class Game
     _do_client_ui(ui, clientId)
     {
         // Substitute variable if needed
-        let param = ui.param ? this._substituteStateVar(clientId, ui.param) : null;
+        let param = ui.param ? this._expandStateVar(clientId, ui.param) : null;
 
         // Send to client(s)
         const msg = new ClientUIMessage({ command: ui.command, param: param });
@@ -435,7 +367,7 @@ class Game
 
     _do_txt2img(action, clientId)
     {
-        const prompt = this._substituteStateVar(clientId, action.prompt);
+        const prompt = this._expandStateVar(clientId, action.prompt);
         makeTxt2ImgRequest(clientId, prompt, action.writeToStateVar);
         return true;
     }
@@ -451,7 +383,7 @@ class Game
         const aggregated = new Set();
         for (const clientId of this._clientIds)
         {
-            const variable = this._substituteStateVar(clientId, action.clientStateVar);
+            const variable = this._expandStateVar(clientId, action.clientStateVar);
             if (variable)
             {
                 aggregated.add(variable);
@@ -474,7 +406,7 @@ class Game
         const aggregated = [];
         for (const clientId of this._clientIds)
         {
-            const variable = this._substituteStateVar(clientId, action.clientStateVar);
+            const variable = this._expandStateVar(clientId, action.clientStateVar);
             if (variable)
             {
                 aggregated.push(variable);
@@ -488,7 +420,7 @@ class Game
 
     _do_gather_images_into_map(action, clientId)
     {
-        const selectedImageIds = this._substituteStateVar(clientId, action.fromStateVar);
+        const selectedImageIds = this._expandStateVar(clientId, action.fromStateVar);
         if (!selectedImageIds)
         {
             console.log(`Error: gather_images_into_map was unable to read from ${action.fromStateVar}`);
@@ -516,7 +448,7 @@ class Game
 
     _do_vote(action, clientId)
     {
-        const votes = this._substituteStateVar(clientId, action.stateVar);
+        const votes = this._expandStateVar(clientId, action.stateVar);
         if (!votes || !(votes.length > 0))
         {
             console.log(`Error: Unable to vote on null or empty vote array read from ${action.stateVar}`);
