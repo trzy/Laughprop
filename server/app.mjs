@@ -7,10 +7,9 @@
  *
  * TODO Next:
  * ----------
- * - Clean up state variable substitution. Probably should rename the function to "expand" and support
- *   @/@@ notation for full variable substitution vs. %/%% for string replacement.
+ * - Fix CSS.
+ * - Transmit movie name and display it above each slideshow and who it features
  * - Real image generation.
- * - Movie game.
  * - Socket reconnect on front-end? Don't remove dead clients until after some timeout here, allowing
  *   them to resume? If we do this, must perform replay. Alternatively, can remove clients immediately
  *   but preserve their scripting contexts in an "archive" for resumption. Not sure if this is possible
@@ -36,6 +35,7 @@ import
 import { generateSessionId, randomChoice, tallyVotes } from "./modules/utils.mjs";
 import * as variable_expansion from "./modules/variable_expansion.mjs";
 import * as themed_image_game from "./modules/games/themed_image.mjs";
+import * as movie_game from "./modules/games/movies.mjs";
 
 
 /**************************************************************************************************
@@ -184,7 +184,7 @@ class Game
         switch (action.action)
         {
         case "init_state":                      return this._do_init_state();
-        case "client_ui":                       return this._do_client_ui(action.ui, clientId);
+        case "client_ui":                       return this._do_client_ui(action.ui, clientId, action.sendToAll);
         case "random_choice":                   return this._do_random_choice(action, clientId);
         case "per_client":
             if (clientId != null)
@@ -199,10 +199,18 @@ class Game
         case "wait_for_state_var":              return this._do_wait_for_state_var(action, clientId);
         case "wait_for_state_var_all_users":    return this._do_wait_for_state_var_all_users(action);
         case "txt2img":                         return this._do_txt2img(action, clientId);
+        case "depth2img":                       return this._do_depth2img(action, clientId);
+        case "gather_keys_into_array":          return this._do_gather_keys_into_array(action, clientId);
         case "gather_client_state_into_set":    return this._do_gather_client_state_into_set(action);
         case "gather_client_state_into_array":  return this._do_gather_client_state_into_array(action);
+        case "gather_client_state_into_map_by_client_id":
+                                                return this._do_gather_client_state_into_map_by_client_id(action);
         case "gather_images_into_map":          return this._do_gather_images_into_map(action, clientId);
         case "vote":                            return this._do_vote(action, clientId);
+        case "select":                          return this._do_select(action, clientId);
+        case "copy":                            return this._do_copy(action, clientId);
+        case "delete":                          return this._do_delete(action, clientId);
+        case "make_map":                        return this._do_make_map(action, clientId);
         default:
             console.log(`Error: Unknown action: ${action.action}`);
             return false;
@@ -295,6 +303,37 @@ class Game
         return variable_expansion.expand(variable, globalState, localState);
     }
 
+    _deleteStateVar(clientId, variable)
+    {
+        // Get local and global state
+        const globalState = this._globalScriptCtx.state;
+        let localState = null;
+        if (clientId)
+        {
+            const scriptCtx = this._perClientScriptCtx[clientId];
+            if (scriptCtx)
+            {
+                localState = scriptCtx.state;
+            }
+        }
+
+        if (variable.startsWith("@@"))
+        {
+            if (localState)
+            {
+                delete localState[variable];
+            }
+            else
+            {
+                console.log(`Error: ClientId is null. Cannot delete client-local variable: ${variable}`);
+            }
+        }
+        else if (variable.startsWith("@"))
+        {
+            delete globalState[variable];
+        }
+    }
+
     _do_init_state()
     {
         this._globalScriptCtx.state = {};
@@ -305,14 +344,15 @@ class Game
         return true;
     }
 
-    _do_client_ui(ui, clientId)
+    _do_client_ui(ui, clientId, forceSendToAll)
     {
+        console.log(ui.command + " -- " + forceSendToAll);
         // Substitute variable if needed
         let param = ui.param ? this._expandStateVar(clientId, ui.param) : null;
 
         // Send to client(s)
         const msg = new ClientUIMessage({ command: ui.command, param: param });
-        if (clientId == null)
+        if (clientId == null || forceSendToAll)
         {
             sendMessageToClients(this._clientIds, msg);
         }
@@ -372,6 +412,29 @@ class Game
         return true;
     }
 
+    _do_depth2img(action, clientId)
+    {
+        const params = this._expandStateVar(clientId, action.params);
+        makeDepth2ImgRequest(clientId, params, action.writeToStateVar);
+        return true;
+    }
+
+    _do_gather_keys_into_array(action, clientId)
+    {
+        let array = [];
+        const srcMap = this._expandStateVar(clientId, action.stateVar);
+        if (srcMap.constructor === Object)
+        {
+            array = Object.keys(srcMap);
+        }
+        else
+        {
+            console.log(`Error: gather_keys_into_array expected a map but got: ${action.stateVar}`);
+        }
+        this._writeToStateVar(clientId, action.writeToStateVar, array);
+        return true;
+    }
+
     _do_gather_client_state_into_set(action)
     {
         if (!action.clientStateVar.startsWith("@@"))
@@ -410,6 +473,29 @@ class Game
             if (variable)
             {
                 aggregated.push(variable);
+            }
+        }
+
+        this._writeToStateVar(null, action.writeToStateVar, aggregated);
+
+        return true;
+    }
+
+    _do_gather_client_state_into_map_by_client_id(action)
+    {
+        if (!action.clientStateVar.startsWith("@@"))
+        {
+            console.log(`Error: gather_client_state_into_map_by_client_id expected a per-client state variable but got: ${action.clientStateVar}`);
+            return false;
+        }
+
+        const aggregated = {};
+        for (const clientId of this._clientIds)
+        {
+            const variable = this._expandStateVar(clientId, action.clientStateVar);
+            if (variable)
+            {
+                aggregated[clientId] = variable;
             }
         }
 
@@ -457,6 +543,55 @@ class Game
 
         const winningVotes = tallyVotes(votes);
         this._writeToStateVar(clientId, action.writeToStateVar, winningVotes);
+
+        return true;
+    }
+
+    _do_select(action, clientId)
+    {
+        const selection = this._expandStateVar(clientId, action.stateVar);
+        const selections = this._expandStateVar(clientId, action.selections);
+        const selectedValue = selections[selection];
+        this._writeToStateVar(clientId, action.writeToStateVar, selectedValue);
+        return true;
+    }
+
+    _do_copy(action, clientId)
+    {
+        const src = this._expandStateVar(clientId, action.source);
+        this._writeToStateVar(clientId, action.writeToStateVar, src);
+        return true;
+    }
+
+    _do_delete(action, clientId)
+    {
+        this._deleteStateVar(clientId, action.stateVar);
+        return true;
+    }
+
+    _do_make_map(action, clientId)
+    {
+        const map = {};
+        const keys = this._expandStateVar(clientId, action.keys);
+        const values = this._expandStateVar(clientId, action.values);
+
+        if (!keys || !values || keys.constructor != Array || values.constructor != Array)
+        {
+            console.log(`Error: make_map expects keys and values to be arrays`);
+        }
+        else if (keys.length != values.length)
+        {
+            console.log(`Error: make_map expects keys and values to be same length`);
+        }
+        else
+        {
+            for (let i = 0; i < keys.length; i++)
+            {
+                map[keys[i]] = values[i];
+            }
+        }
+
+        this._writeToStateVar(clientId, action.writeToStateVar, map);
 
         return true;
     }
@@ -606,6 +741,10 @@ class Session
             this._game = new Game(themed_image_game.script, this._clientIds);
             this._game.start();
             break;
+        case "I'd Watch That":
+            this._game = new Game(movie_game.script, this._clientIds);
+            this._game.start();
+            break;
         }
     }
 
@@ -682,15 +821,14 @@ function removeClientFromSession(session, clientId)
 
 function makeTxt2ImgRequest(clientId, prompt, destStateVar)
 {
-    function respondWithFakeImage(filepath)
+    function respondWithFakeImage(filepaths)
     {
-        const buffer = fs.readFileSync(filepath);
-        const base64 = buffer.toString("base64");
-
-        // Create 4 copies of the fake image
         const imageByUuid = {};
-        for (let i = 0; i < 4; i++)
+
+        for (const filepath of filepaths)
         {
+            const buffer = fs.readFileSync(filepath);
+            const base64 = buffer.toString("base64");
             imageByUuid[crypto.randomUUID()] = base64;
         }
 
@@ -706,7 +844,35 @@ function makeTxt2ImgRequest(clientId, prompt, destStateVar)
 
     }
 
-    setTimeout(respondWithFakeImage, 1500, "../assets/RickAstley.jpg");
+    setTimeout(respondWithFakeImage, 1500, [ "../assets/RickAstley.jpg", "../assets/Plissken2.jpg", "../assets/KermitPlissken.jpg", "../assets/SpaceFarley.jpg" ]);
+}
+
+function makeDepth2ImgRequest(clientId, params, destStateVar)
+{
+    function respondWithFakeImage(filepaths)
+    {
+        const imageByUuid = {};
+
+        for (const filepath of filepaths)
+        {
+            const buffer = fs.readFileSync(filepath);
+            const base64 = buffer.toString("base64");
+            imageByUuid[crypto.randomUUID()] = base64;
+        }
+
+        const session = tryGetSessionByClientId(clientId);
+        if (session)
+        {
+            session.receiveImageResponse(clientId, destStateVar, imageByUuid);
+        }
+        else
+        {
+            console.log(`Error: Dropping image response because no session for clientId=${clientId}`);
+        }
+
+    }
+
+    setTimeout(respondWithFakeImage, 1500, [ "../assets/RickAstley.jpg", "../assets/Plissken2.jpg", "../assets/KermitPlissken.jpg", "../assets/SpaceFarley.jpg" ]);
 }
 
 

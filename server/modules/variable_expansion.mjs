@@ -16,6 +16,8 @@
  * contains is performed; or, they may be strings with inline references to variables that are
  * expanded as text. These are wrapped in '{' and '}'.
  *
+ * Expansion within fully substituted variables is not performed.
+ *
  * For example, consider the following variables:
  *
  *  @foo = "Mr. Foo"
@@ -111,9 +113,13 @@ function expandString(str, globalState, localState)
 
 function expand(variable, globalState, localState)
 {
-    if (typeof(variable) === "string")
+    if (variable == null)
     {
-        // If begins with '@', perform full substitution
+        return;
+    }
+    else if (typeof(variable) === "string")
+    {
+        // If begins with '@', perform full substitution with no internal expansion
         if (variable.startsWith("@@") && localState != null && variable in localState)
         {
             return localState[variable];
