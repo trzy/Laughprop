@@ -17,7 +17,7 @@
  *   has been exceeded (say, 10 seconds).
  */
 
-//import http from "http";
+import http from "http";
 import fs from "fs";
 import crypto from "crypto";
 import express from "express";
@@ -819,7 +819,144 @@ function removeClientFromSession(session, clientId)
  Image Generation Requests
 **************************************************************************************************/
 
+var _placeholderImages = [];
+
 function makeTxt2ImgRequest(clientId, prompt, destStateVar)
+{
+    const session = tryGetSessionByClientId(clientId);
+    if (!session)
+    {
+        console.log(`Error: Dropping image response because no session for clientId=${clientId}`);
+        return;
+    }
+
+    // Defaults
+    const payload = {
+        "enable_hr": false,
+        "hr_scale" : 2,
+        "hr_upscaler" : "Latent",
+        "hr_second_pass_steps" : 0,
+        "hr_resize_x": 0,
+        "hr_resize_y": 0,
+        "denoising_strength": 0.0,
+        "firstphase_width": 0,
+        "firstphase_height": 0,
+        "prompt": "",
+        "styles": [],
+        "seed": -1,
+        "subseed": -1,
+        "subseed_strength": 0.0,
+        "seed_resize_from_h": -1,
+        "seed_resize_from_w": -1,
+        "batch_size": 1,
+        "n_iter": 1,
+        "steps": 20,
+        "cfg_scale": 7.0,
+        "width": 512,
+        "height": 512,
+        "restore_faces": false,
+        "tiling": false,
+        "negative_prompt": "",
+        "eta": 0,
+        "s_churn": 0,
+        "s_tmax": 0,
+        "s_tmin": 0,
+        "s_noise": 1,
+        "override_settings": {},
+        "override_settings_restore_afterwards": true,
+        "sampler_name": "Euler a",
+        "sampler_index": "Euler a",
+        "script_name": null,
+        "script_args": []
+    };
+
+    // Our params
+    payload["prompt"] = prompt;
+    payload["seed"] = 42;
+    payload["cfg_scale"] = 9;   // 7?
+    payload["steps"] = 40;
+    payload["batch_size"] = 4;
+
+    // Post request
+    const urlParams = {
+        host: "127.0.0.1",
+        port: 7860,
+        path: "/sdapi/v1/txt2img",
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+    };
+
+    function dummyResponse()
+    {
+        // Use placeholder images
+        const imageByUuid = {};
+        for (let i = 0; i < payload["batch_size"]; i++)
+        {
+            imageByUuid[crypto.randomUUID()] = randomChoice(_placeholderImages);
+        }
+        session.receiveImageResponse(clientId, destStateVar, imageByUuid);
+    }
+
+    function onResponse(response)
+    {
+        let data = "";
+        response.on("data", (chunk) =>
+        {
+            data += chunk;
+        });
+        response.on("end", () =>
+        {
+            try
+            {
+                const responseObj = JSON.parse(data);
+                if (!responseObj["images"])
+                {
+                    console.log("Error: Did not receive any images");
+                    dummyResponse();
+                }
+                else
+                {
+                    const numImages = Math.min(responseObj["images"].length, payload["batch_size"]);
+                    const imageByUuid = {};
+
+                    for (let i = 0; i < numImages; i++)
+                    {
+                        imageByUuid[crypto.randomUUID()] = responseObj["images"][i];
+                    }
+
+                    if (numImages < payload["batch_size"])
+                    {
+                        // This should never happen but in case it does, pad with the first image
+                        for (let i = numImages; i < payload["batch_size"]; i++)
+                        {
+                            imageByUuid[crypto.randomUUID()] = responseObj["images"][0];
+                        }
+                    }
+
+                    // Return
+                    session.receiveImageResponse(clientId, destStateVar, imageByUuid);
+                }
+            }
+            catch (error)
+            {
+                console.log("Error: Unable to parse response from image server");
+                dummyResponse();
+            }
+        });
+    }
+
+    const request = http.request(urlParams, onResponse);
+    request.on("error", error =>
+    {
+        console.log(`Error: txt2img request failed`);
+        console.log(error);
+        dummyResponse();
+    });
+    request.write(JSON.stringify(payload));
+    request.end();
+}
+
+function _makeTxt2ImgRequest(clientId, prompt, destStateVar)
 {
     function respondWithFakeImage(filepaths)
     {
@@ -841,7 +978,6 @@ function makeTxt2ImgRequest(clientId, prompt, destStateVar)
         {
             console.log(`Error: Dropping image response because no session for clientId=${clientId}`);
         }
-
     }
 
     setTimeout(respondWithFakeImage, 1500, [ "../assets/RickAstley.jpg", "../assets/Plissken2.jpg", "../assets/KermitPlissken.jpg", "../assets/SpaceFarley.jpg" ]);
@@ -869,10 +1005,21 @@ function makeDepth2ImgRequest(clientId, params, destStateVar)
         {
             console.log(`Error: Dropping image response because no session for clientId=${clientId}`);
         }
-
     }
 
     setTimeout(respondWithFakeImage, 1500, [ "../assets/RickAstley.jpg", "../assets/Plissken2.jpg", "../assets/KermitPlissken.jpg", "../assets/SpaceFarley.jpg" ]);
+}
+
+function loadPlaceholderImages()
+{
+    const filepaths = [ "../assets/RickAstley.jpg", "../assets/Plissken2.jpg", "../assets/KermitPlissken.jpg", "../assets/SpaceFarley.jpg" ];
+    _placeholderImages = [];
+    for (const filepath of filepaths)
+    {
+        const buffer = fs.readFileSync(filepath);
+        const base64 = buffer.toString("base64");
+        _placeholderImages.push(base64);
+    }
 }
 
 
@@ -1133,6 +1280,8 @@ function onClientInputMessage(socket, msg)
 /**************************************************************************************************
  Program Entry Point
 **************************************************************************************************/
+
+loadPlaceholderImages();
 
 // Web server
 const port = 8080;
