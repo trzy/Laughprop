@@ -7,8 +7,11 @@
  *
  * TODO Next:
  * ----------
+ * - Image requests need to be properly serialized because option get requests return immediately and
+ *   it is not clear if they are returning the currently-used options or last-set options, so even if
+ *   image server is serializing internally, we may have an issue where we fail to set the model
+ *   correctly. Need to wait till one request is done before beginning the next.
  * - Transmit movie name and display it above each slideshow and who it features
- * - Real image generation.
  * - Fix CSS (centering of candidate images).
  * - Socket reconnect on front-end? Don't remove dead clients until after some timeout here, allowing
  *   them to resume? If we do this, must perform replay. Alternatively, can remove clients immediately
@@ -819,7 +822,82 @@ function removeClientFromSession(session, clientId)
  Image Generation Requests
 **************************************************************************************************/
 
+const _imageServerParams = {
+    host: "127.0.0.1",
+    port: 7860,
+    txt2ImgModel: "v1-5-pruned-emaonly.safetensors",
+    depth2ImgModel: "512-depth-ema.ckpt"
+};
+
 var _placeholderImages = [];
+var _inputImageByAssetPath = {};
+
+function loadInputImage(assetPath)
+{
+    if (assetPath in _inputImageByAssetPath)
+    {
+        return _inputImageByAssetPath[assetPath];
+    }
+
+    const filepath = "../assets/" + assetPath;
+    const buffer = fs.readFileSync(filepath);
+    const base64 = buffer.toString("base64");
+    _inputImageByAssetPath[assetPath] = base64;
+    return base64;
+}
+
+function getImageServerOptions(onOptions)
+{
+    const url = "http://" + _imageServerParams.host + ":" + _imageServerParams.port + "/sdapi/v1/options";
+    http.get(url, response =>
+    {
+        response.on("data", data =>
+        {
+            try
+            {
+                onOptions(JSON.parse(data));
+            }
+            catch (error)
+            {
+                console.log("Error: Unable to parse image server options");
+                onOptions({});
+            }
+        });
+    }).on("error", error =>
+    {
+        console.log("Error: Image server options read request failed");
+        console.log(error);
+        onOptions({});
+    });
+}
+
+function setImageModel(model)
+{
+    console.log(`Setting image model: ${model}`);
+
+    const options = {
+        "sd_model_checkpoint": model
+    };
+
+    // Post
+    const urlParams = {
+        host: _imageServerParams.host,
+        port: _imageServerParams.port,
+        path: "/sdapi/v1/options",
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+    };
+
+    const request = http.request(urlParams);
+    request.on("error", error =>
+    {
+        console.log(`Error: Model set request failed`);
+        console.log(error);
+    });
+
+    request.write(JSON.stringify(options));
+    request.end();
+}
 
 function makeTxt2ImgRequest(clientId, prompt, destStateVar)
 {
@@ -830,6 +908,19 @@ function makeTxt2ImgRequest(clientId, prompt, destStateVar)
         return;
     }
 
+    getImageServerOptions(options =>
+    {
+        const model = options["sd_model_checkpoint"];
+        if (_imageServerParams.txt2ImgModel != model)
+        {
+            setImageModel(_imageServerParams.txt2ImgModel);
+        }
+        continueTxt2ImgRequest(clientId, prompt, session, destStateVar);
+    });
+}
+
+function continueTxt2ImgRequest(clientId, prompt, session, destStateVar)
+{
     // Defaults
     const payload = {
         "enable_hr": false,
@@ -879,8 +970,8 @@ function makeTxt2ImgRequest(clientId, prompt, destStateVar)
 
     // Post request
     const urlParams = {
-        host: "127.0.0.1",
-        port: 7860,
+        host: _imageServerParams.host,
+        port: _imageServerParams.port,
         path: "/sdapi/v1/txt2img",
         method: "POST",
         headers: { "Content-Type": "application/json" }
@@ -916,7 +1007,8 @@ function makeTxt2ImgRequest(clientId, prompt, destStateVar)
                 }
                 else
                 {
-                    const numImages = Math.min(responseObj["images"].length, payload["batch_size"]);
+                    const numImagesExpected = payload["batch_size"] * payload["n_iter"];
+                    const numImages = Math.min(responseObj["images"].length, numImagesExpected);
                     const imageByUuid = {};
 
                     for (let i = 0; i < numImages; i++)
@@ -924,13 +1016,10 @@ function makeTxt2ImgRequest(clientId, prompt, destStateVar)
                         imageByUuid[crypto.randomUUID()] = responseObj["images"][i];
                     }
 
-                    if (numImages < payload["batch_size"])
+                    // This should never happen but in case it does, pad with the first image
+                    for (let i = numImages; i < numImagesExpected; i++)
                     {
-                        // This should never happen but in case it does, pad with the first image
-                        for (let i = numImages; i < payload["batch_size"]; i++)
-                        {
-                            imageByUuid[crypto.randomUUID()] = responseObj["images"][0];
-                        }
+                        imageByUuid[crypto.randomUUID()] = responseObj["images"][0];
                     }
 
                     // Return
@@ -956,58 +1045,160 @@ function makeTxt2ImgRequest(clientId, prompt, destStateVar)
     request.end();
 }
 
-function _makeTxt2ImgRequest(clientId, prompt, destStateVar)
-{
-    function respondWithFakeImage(filepaths)
-    {
-        const imageByUuid = {};
-
-        for (const filepath of filepaths)
-        {
-            const buffer = fs.readFileSync(filepath);
-            const base64 = buffer.toString("base64");
-            imageByUuid[crypto.randomUUID()] = base64;
-        }
-
-        const session = tryGetSessionByClientId(clientId);
-        if (session)
-        {
-            session.receiveImageResponse(clientId, destStateVar, imageByUuid);
-        }
-        else
-        {
-            console.log(`Error: Dropping image response because no session for clientId=${clientId}`);
-        }
-    }
-
-    setTimeout(respondWithFakeImage, 1500, [ "../assets/RickAstley.jpg", "../assets/Plissken2.jpg", "../assets/KermitPlissken.jpg", "../assets/SpaceFarley.jpg" ]);
-}
-
 function makeDepth2ImgRequest(clientId, params, destStateVar)
 {
-    function respondWithFakeImage(filepaths)
+    const session = tryGetSessionByClientId(clientId);
+    if (!session)
     {
-        const imageByUuid = {};
-
-        for (const filepath of filepaths)
-        {
-            const buffer = fs.readFileSync(filepath);
-            const base64 = buffer.toString("base64");
-            imageByUuid[crypto.randomUUID()] = base64;
-        }
-
-        const session = tryGetSessionByClientId(clientId);
-        if (session)
-        {
-            session.receiveImageResponse(clientId, destStateVar, imageByUuid);
-        }
-        else
-        {
-            console.log(`Error: Dropping image response because no session for clientId=${clientId}`);
-        }
+        console.log(`Error: Dropping image response because no session for clientId=${clientId}`);
+        return;
     }
 
-    setTimeout(respondWithFakeImage, 1500, [ "../assets/RickAstley.jpg", "../assets/Plissken2.jpg", "../assets/KermitPlissken.jpg", "../assets/SpaceFarley.jpg" ]);
+    getImageServerOptions(options =>
+    {
+        const model = options["sd_model_checkpoint"];
+        if (_imageServerParams.depth2ImgModel != model)
+        {
+            setImageModel(_imageServerParams.depth2ImgModel);
+        }
+        continueDepth2ImgRequest(clientId, params, session, destStateVar);
+    });
+}
+
+function continueDepth2ImgRequest(clientId, params, session, destStateVar)
+{
+    // Defaults
+    const payload = {
+        "init_images": [ loadInputImage(params.image) ],
+        "resize_mode": 0,
+        "denoising_strength": 0.75,
+        "mask_blur": 4,
+        "inpainting_fill": 0,
+        "inpaint_full_res": true,
+        "inpaint_full_res_padding": 0,
+        "inpainting_mask_invert": 0,
+        "initial_noise_multiplier": 1,
+        "prompt": "",
+        "styles": [],
+        "seed": -1,
+        "subseed": -1,
+        "subseed_strength": 0,
+        "seed_resize_from_h": -1,
+        "seed_resize_from_w": -1,
+        "batch_size": 1,
+        "n_iter": 1,
+        "steps": 20,
+        "cfg_scale": 7.0,
+        "image_cfg_scale": 1.5,
+        "width": 512,
+        "height": 512,
+        "restore_faces": false,
+        "tiling": false,
+        "negative_prompt": "",
+        "eta": 0,
+        "s_churn": 0,
+        "s_tmax": 0,
+        "s_tmin": 0,
+        "s_noise": 1,
+        "override_settings": {},
+        "override_settings_restore_afterwards": true,
+        "sampler_name": "Euler a",
+        "sampler_index": "Euler a",
+        "include_init_images": false,
+        "script_name": null,
+        "script_args": []
+    };
+
+    // Our params
+    payload["prompt"] = params.prompt;
+    payload["negative_prompt"] = params.negative_prompt;
+    payload["seed"] = 585501288;
+    payload["cfg_scale"] = 9;
+    payload["denoising_strength"] = 0.9;
+    payload["steps"] = 50;
+    payload["batch_size"] = 1;
+    payload["n_iter"] = 4;             // generate 4 images sequentially, which seems to yield more diverse results (https://github.com/CompVis/stable-diffusion/issues/218)
+    payload["sampler_name"] = "DDIM",
+    payload["sampler_index"] = "DDIM";  // this parameter is deprecated, supposedly
+    payload["seed_resize_from_h"] = 0;
+    payload["seed_resize_from_w"] = 0;
+    payload["resize_mode"] = 0;
+
+    // Post request
+    const urlParams = {
+        host: "127.0.0.1",
+        port: 7860,
+        path: "/sdapi/v1/img2img",
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+    };
+
+    function dummyResponse()
+    {
+        // Use placeholder images
+        const imageByUuid = {};
+        for (let i = 0; i < payload["batch_size"]; i++)
+        {
+            imageByUuid[crypto.randomUUID()] = randomChoice(_placeholderImages);
+        }
+        session.receiveImageResponse(clientId, destStateVar, imageByUuid);
+    }
+
+    function onResponse(response)
+    {
+        let data = "";
+        response.on("data", (chunk) =>
+        {
+            data += chunk;
+        });
+        response.on("end", () =>
+        {
+            try
+            {
+                const responseObj = JSON.parse(data);
+                if (!responseObj["images"])
+                {
+                    console.log("Error: Did not receive any images");
+                    dummyResponse();
+                }
+                else
+                {
+                    const numImagesExpected = payload["batch_size"] * payload["n_iter"];
+                    const numImages = Math.min(responseObj["images"].length, numImagesExpected);
+                    const imageByUuid = {};
+
+                    for (let i = 0; i < numImages; i++)
+                    {
+                        imageByUuid[crypto.randomUUID()] = responseObj["images"][i];
+                    }
+
+                    // This should never happen but in case it does, pad with the first image
+                    for (let i = numImages; i < numImagesExpected; i++)
+                    {
+                        imageByUuid[crypto.randomUUID()] = responseObj["images"][0];
+                    }
+
+                    // Return
+                    session.receiveImageResponse(clientId, destStateVar, imageByUuid);
+                }
+            }
+            catch (error)
+            {
+                console.log("Error: Unable to parse response from image server");
+                dummyResponse();
+            }
+        });
+    }
+
+    const request = http.request(urlParams, onResponse);
+    request.on("error", error =>
+    {
+        console.log(`Error: depth2img request failed`);
+        console.log(error);
+        dummyResponse();
+    });
+    request.write(JSON.stringify(payload));
+    request.end();
 }
 
 function loadPlaceholderImages()
