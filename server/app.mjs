@@ -35,7 +35,7 @@ import
     ReturnToLobbyMessage,
     SelectGameStateMessage,
     ClientUIMessage,
-} from "./public/js/modules/messages.mjs";
+} from "../frontend/js/modules/messages.mjs";
 import { generateSessionId, randomChoice, tallyVotes } from "./modules/utils.mjs";
 import * as variable_expansion from "./modules/variable_expansion.mjs";
 import * as themed_image_game from "./modules/games/themed_image.mjs";
@@ -1478,7 +1478,7 @@ loadPlaceholderImages();
 // Web server
 const port = 8080;
 const app = express();
-app.use(express.static("public"));
+app.use(express.static("../frontend"));
 const server = app.listen(port, () =>
 {
     console.log(`Laughprop web server listening on port ${port}`);

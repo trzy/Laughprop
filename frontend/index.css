@@ -1,0 +1,149 @@
+body {
+}
+
+.title {
+    text-align: center;
+    margin-top: 4rem;
+    margin-bottom: 0;
+}
+
+.subtitle {
+    text-align: center;
+    font-size: 1.8rem;
+    font-weight: bold;
+    clear: both;
+}
+
+.left {
+    float: left;
+}
+
+.text-left {
+    text-align: left;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.center-children {
+    display: flex;
+    justify-content: center;
+}
+
+.screen {
+    padding: 1.8rem;
+    padding-top: 0;
+}
+.message {
+    margin: 1.8rem 0;
+    width: 100%;
+    font-size: 1.8rem;
+}
+
+.error {
+}
+
+.button {
+    margin: 1rem;
+    height: 4rem;
+    line-height: 4rem; /* needed to center text vertically */
+    min-width: 25%;
+    text-align: center;
+    font-size: 1.8rem;
+}
+
+.thumbnail {
+    object-fit: cover;
+    padding: 0.2rem;
+}
+
+.thumbnail-list {
+    display: flex;
+    max-width: 25%;
+    margin-bottom: 1rem;
+}
+
+.candidate-image {
+    padding: 0.2rem;
+}
+
+.carousel {
+    display: block;
+    padding: 0 4rem;
+}
+
+/*
+ * These classes are used by the code -- if you must change their names, make sure to
+ * update all JavaScript files that reference them.
+ */
+
+.button-selected:hover {
+    border: 2px solid black;
+}
+
+.button-selected {
+    border: 2px solid black;
+}
+
+.button-disabled {
+    background-color: #606c76;
+    border-color: #606c76;
+    color: #fff;
+    outline: 0;
+}
+
+.image-selected {
+    border: 2px solid #9b4dca;
+}
+
+.game-title {
+    margin: 0;
+    color: #ccc;
+    padding: 1rem;
+    display: block;
+    border-bottom: #ccc 1px solid;
+    font-style: italic;
+    text-align: center;
+}
+
+#GameID {
+    text-align: center;
+    font-size: 5vw;
+    font-weight: bold;
+    margin-top: 4rem;
+}
+
+.prompt-description {
+    font-weight: bold;
+    background: black;
+    color: white;
+    line-height: 4.5rem;
+    font-weight: bold;
+    padding: 1rem;
+    margin-bottom: 4px;
+    border-radius: 4px;
+}
+
+.prompt {
+    font-weight: bold;
+    color: black;
+    resize: vertical;
+    height: 8rem;
+}
+
+#MultiSelectMultiPrompt .row
+{
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    width: 100%;
+}
+
+#MultiSelectMultiPrompt .column
+{
+    display: flex;
+    flex-direction: column;
+    flex-basis: 100%;
+    flex: 1;
+}
