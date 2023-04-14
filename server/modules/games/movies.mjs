@@ -8,17 +8,17 @@
 
 const script = [
     // Begin by clearing state and display area on client side
-    { action: "init_state" },
-    { action: "client_ui", ui: { command: "init_game" } },
-    { action: "client_ui", ui: { command: "title", param: "I'd Watch That" } },
+    { op: "init_state" },
+    { op: "client_ui", ui: { command: "init_game" } },
+    { op: "client_ui", ui: { command: "title", param: "I'd Watch That" } },
 
     // Each user proceeds with their own individual movie selections
-    { action: "per_client", actions:
+    { op: "per_client", ops:
         [
             // Multi-select w/ multi-prompt: select movies and cast for each movie. Prompts come
             // back as @@prompt_0, @@prompt_1, etc.
             {
-                action: "client_ui",
+                op: "client_ui",
                 ui:     {
                     command:    "multi_select_multi_prompt_widget",
                     param:      {
@@ -30,13 +30,13 @@ const script = [
 
             // Wait for user's movie selection to arrive. Check only @@selected_movie and assume
             // that the required casting selections have made it back, too
-            { action: "wait_for_state_var", stateVar: "@@selected_movie" },
+            { op: "wait_for_state_var", stateVar: "@@selected_movie" },
 
             // Depending on the film, we select different depth2img command objects, which include
             // prompts to be expanded
             {
                 // Scene 1
-                action: "select",
+                op: "select",
                 stateVar: "@@selected_movie",
                 writeToStateVar: "@@depth2img_command_scene1",
                 selections: {
@@ -46,7 +46,7 @@ const script = [
             },
             {
                 // Scene 2
-                action: "select",
+                op: "select",
                 stateVar: "@@selected_movie",
                 writeToStateVar: "@@depth2img_command_scene2",
                 selections: {
@@ -56,7 +56,7 @@ const script = [
             },
             {
                 // Scene 3
-                action: "select",
+                op: "select",
                 stateVar: "@@selected_movie",
                 writeToStateVar: "@@depth2img_command_scene3",
                 selections: {
@@ -66,7 +66,7 @@ const script = [
             },
             {
                 // Scene 4
-                action: "select",
+                op: "select",
                 stateVar: "@@selected_movie",
                 writeToStateVar: "@@depth2img_command_scene4",
                 selections: {
@@ -76,112 +76,112 @@ const script = [
             },
 
             // Issue all the depth2img commands in order
-            { action: "depth2img", params: "@@depth2img_command_scene1", writeToStateVar: "@@image_candidates_by_id_scene1" },
-            { action: "depth2img", params: "@@depth2img_command_scene2", writeToStateVar: "@@image_candidates_by_id_scene2" },
-            { action: "depth2img", params: "@@depth2img_command_scene3", writeToStateVar: "@@image_candidates_by_id_scene3" },
-            { action: "depth2img", params: "@@depth2img_command_scene4", writeToStateVar: "@@image_candidates_by_id_scene4" },
+            { op: "depth2img", params: "@@depth2img_command_scene1", writeToStateVar: "@@image_candidates_by_id_scene1" },
+            { op: "depth2img", params: "@@depth2img_command_scene2", writeToStateVar: "@@image_candidates_by_id_scene2" },
+            { op: "depth2img", params: "@@depth2img_command_scene3", writeToStateVar: "@@image_candidates_by_id_scene3" },
+            { op: "depth2img", params: "@@depth2img_command_scene4", writeToStateVar: "@@image_candidates_by_id_scene4" },
 
             // Wait for image candidates for scene 1 to arrive, send to user for display, then wait
             // for user's selection
-            { action: "client_ui", ui: { command: "instructions", param: "Filming underway. Coming soon to a browser near you! This may take a while, please be patient..." } },
-            { action: "client_ui", ui: { command: "multi_select_multi_prompt_widget", param: null } },
-            { action: "client_ui", ui: { command: "image_carousel_widget", param: null } },
-            { action: "wait_for_state_var", stateVar: "@@image_candidates_by_id_scene1" },
-            { action: "client_ui", ui: { command: "cache_images", param: "@@image_candidates_by_id_scene1" } },                                 // send images themselves
-            { action: "gather_keys_into_array", stateVar: "@@image_candidates_by_id_scene1", writeToStateVar: "@@image_candidate_ids_scene1" }, // get keys (image IDs) from image ID map
-            { action: "client_ui", ui: { command: "instructions", param: "Scene 1/4: Select a generated image to use." } },
-            { action: "client_ui", ui: { command: "image_carousel_widget", param: "@@image_candidate_ids_scene1" } },
-            { action: "wait_for_state_var", stateVar: "@@selected_image_id" },          // image carousel returns selection in @@selected_image_id
-            { action: "copy", source: "@@selected_image_id", writeToStateVar: "@@selected_image_id_scene1" },
-            { action: "delete", stateVar: "@@selected_image_id" },
+            { op: "client_ui", ui: { command: "instructions", param: "Filming underway. Coming soon to a browser near you! This may take a while, please be patient..." } },
+            { op: "client_ui", ui: { command: "multi_select_multi_prompt_widget", param: null } },
+            { op: "client_ui", ui: { command: "image_carousel_widget", param: null } },
+            { op: "wait_for_state_var", stateVar: "@@image_candidates_by_id_scene1" },
+            { op: "client_ui", ui: { command: "cache_images", param: "@@image_candidates_by_id_scene1" } },                                 // send images themselves
+            { op: "gather_keys_into_array", stateVar: "@@image_candidates_by_id_scene1", writeToStateVar: "@@image_candidate_ids_scene1" }, // get keys (image IDs) from image ID map
+            { op: "client_ui", ui: { command: "instructions", param: "Scene 1/4: Select a generated image to use." } },
+            { op: "client_ui", ui: { command: "image_carousel_widget", param: "@@image_candidate_ids_scene1" } },
+            { op: "wait_for_state_var", stateVar: "@@selected_image_id" },          // image carousel returns selection in @@selected_image_id
+            { op: "copy", source: "@@selected_image_id", writeToStateVar: "@@selected_image_id_scene1" },
+            { op: "delete", stateVar: "@@selected_image_id" },
 
             // ... scene 2 ...
-            { action: "client_ui", ui: { command: "instructions", param: "Filming underway for scene 2/4. Please be patient..." } },
-            { action: "client_ui", ui: { command: "multi_select_multi_prompt_widget", param: null } },
-            { action: "client_ui", ui: { command: "image_carousel_widget", param: null } },
-            { action: "wait_for_state_var", stateVar: "@@image_candidates_by_id_scene2" },
-            { action: "client_ui", ui: { command: "cache_images", param: "@@image_candidates_by_id_scene2" } },
-            { action: "gather_keys_into_array", stateVar: "@@image_candidates_by_id_scene2", writeToStateVar: "@@image_candidate_ids_scene2" },
-            { action: "client_ui", ui: { command: "instructions", param: "Scene 2/4: Select a generated image to use." } },
-            { action: "client_ui", ui: { command: "image_carousel_widget", param: "@@image_candidate_ids_scene2" } },
-            { action: "wait_for_state_var", stateVar: "@@selected_image_id" },
-            { action: "copy", source: "@@selected_image_id", writeToStateVar: "@@selected_image_id_scene2" },
-            { action: "delete", stateVar: "@@selected_image_id" },
+            { op: "client_ui", ui: { command: "instructions", param: "Filming underway for scene 2/4. Please be patient..." } },
+            { op: "client_ui", ui: { command: "multi_select_multi_prompt_widget", param: null } },
+            { op: "client_ui", ui: { command: "image_carousel_widget", param: null } },
+            { op: "wait_for_state_var", stateVar: "@@image_candidates_by_id_scene2" },
+            { op: "client_ui", ui: { command: "cache_images", param: "@@image_candidates_by_id_scene2" } },
+            { op: "gather_keys_into_array", stateVar: "@@image_candidates_by_id_scene2", writeToStateVar: "@@image_candidate_ids_scene2" },
+            { op: "client_ui", ui: { command: "instructions", param: "Scene 2/4: Select a generated image to use." } },
+            { op: "client_ui", ui: { command: "image_carousel_widget", param: "@@image_candidate_ids_scene2" } },
+            { op: "wait_for_state_var", stateVar: "@@selected_image_id" },
+            { op: "copy", source: "@@selected_image_id", writeToStateVar: "@@selected_image_id_scene2" },
+            { op: "delete", stateVar: "@@selected_image_id" },
 
             // ... scene 3 ...
-            { action: "client_ui", ui: { command: "instructions", param: "Filming underway for scene 3/4. Please be patient..." } },
-            { action: "client_ui", ui: { command: "multi_select_multi_prompt_widget", param: null } },
-            { action: "client_ui", ui: { command: "image_carousel_widget", param: null } },
-            { action: "wait_for_state_var", stateVar: "@@image_candidates_by_id_scene3" },
-            { action: "client_ui", ui: { command: "cache_images", param: "@@image_candidates_by_id_scene3" } },
-            { action: "gather_keys_into_array", stateVar: "@@image_candidates_by_id_scene3", writeToStateVar: "@@image_candidate_ids_scene3" },
-            { action: "client_ui", ui: { command: "instructions", param: "Scene 3/4: Select a generated image to use." } },
-            { action: "client_ui", ui: { command: "image_carousel_widget", param: "@@image_candidate_ids_scene3" } },
-            { action: "wait_for_state_var", stateVar: "@@selected_image_id" },
-            { action: "copy", source: "@@selected_image_id", writeToStateVar: "@@selected_image_id_scene3" },
-            { action: "delete", stateVar: "@@selected_image_id" },
+            { op: "client_ui", ui: { command: "instructions", param: "Filming underway for scene 3/4. Please be patient..." } },
+            { op: "client_ui", ui: { command: "multi_select_multi_prompt_widget", param: null } },
+            { op: "client_ui", ui: { command: "image_carousel_widget", param: null } },
+            { op: "wait_for_state_var", stateVar: "@@image_candidates_by_id_scene3" },
+            { op: "client_ui", ui: { command: "cache_images", param: "@@image_candidates_by_id_scene3" } },
+            { op: "gather_keys_into_array", stateVar: "@@image_candidates_by_id_scene3", writeToStateVar: "@@image_candidate_ids_scene3" },
+            { op: "client_ui", ui: { command: "instructions", param: "Scene 3/4: Select a generated image to use." } },
+            { op: "client_ui", ui: { command: "image_carousel_widget", param: "@@image_candidate_ids_scene3" } },
+            { op: "wait_for_state_var", stateVar: "@@selected_image_id" },
+            { op: "copy", source: "@@selected_image_id", writeToStateVar: "@@selected_image_id_scene3" },
+            { op: "delete", stateVar: "@@selected_image_id" },
 
             // ... scene 4 ...
-            { action: "client_ui", ui: { command: "instructions", param: "Filming underway for scene 4/4. Please be patient..." } },
-            { action: "client_ui", ui: { command: "multi_select_multi_prompt_widget", param: null } },
-            { action: "client_ui", ui: { command: "image_carousel_widget", param: null } },
-            { action: "wait_for_state_var", stateVar: "@@image_candidates_by_id_scene4" },
-            { action: "client_ui", ui: { command: "cache_images", param: "@@image_candidates_by_id_scene4" } },
-            { action: "gather_keys_into_array", stateVar: "@@image_candidates_by_id_scene4", writeToStateVar: "@@image_candidate_ids_scene4" },
-            { action: "client_ui", ui: { command: "instructions", param: "Scene 4/4: Select a generated image to use." } },
-            { action: "client_ui", ui: { command: "image_carousel_widget", param: "@@image_candidate_ids_scene4" } },
-            { action: "wait_for_state_var", stateVar: "@@selected_image_id" },
-            { action: "copy", source: "@@selected_image_id", writeToStateVar: "@@selected_image_id_scene4" },
-            { action: "delete", stateVar: "@@selected_image_id" },
+            { op: "client_ui", ui: { command: "instructions", param: "Filming underway for scene 4/4. Please be patient..." } },
+            { op: "client_ui", ui: { command: "multi_select_multi_prompt_widget", param: null } },
+            { op: "client_ui", ui: { command: "image_carousel_widget", param: null } },
+            { op: "wait_for_state_var", stateVar: "@@image_candidates_by_id_scene4" },
+            { op: "client_ui", ui: { command: "cache_images", param: "@@image_candidates_by_id_scene4" } },
+            { op: "gather_keys_into_array", stateVar: "@@image_candidates_by_id_scene4", writeToStateVar: "@@image_candidate_ids_scene4" },
+            { op: "client_ui", ui: { command: "instructions", param: "Scene 4/4: Select a generated image to use." } },
+            { op: "client_ui", ui: { command: "image_carousel_widget", param: "@@image_candidate_ids_scene4" } },
+            { op: "wait_for_state_var", stateVar: "@@selected_image_id" },
+            { op: "copy", source: "@@selected_image_id", writeToStateVar: "@@selected_image_id_scene4" },
+            { op: "delete", stateVar: "@@selected_image_id" },
 
             // Return to waiting for everyone else
-            { action: "client_ui", ui: { command: "image_carousel_widget", param: null } },
-            { action: "client_ui", ui: { command: "instructions", param: "Hang tight while everyone else makes their selections..." } },
+            { op: "client_ui", ui: { command: "image_carousel_widget", param: null } },
+            { op: "client_ui", ui: { command: "instructions", param: "Hang tight while everyone else makes their selections..." } },
 
             // Construct a single array holding all image IDs in scene order
-            { action: "copy", source: [ "@@selected_image_id_scene1", "@@selected_image_id_scene2", "@@selected_image_id_scene3", "@@selected_image_id_scene4" ], writeToStateVar: "@@selected_image_ids" },
+            { op: "copy", source: [ "@@selected_image_id_scene1", "@@selected_image_id_scene2", "@@selected_image_id_scene3", "@@selected_image_id_scene4" ], writeToStateVar: "@@selected_image_ids" },
 
             // And create a map of image ID -> image data
-            { action: "gather_images_into_map", fromStateVar: "@@selected_image_ids", writeToStateVar: "@@selected_images" },
+            { op: "gather_images_into_map", fromStateVar: "@@selected_image_ids", writeToStateVar: "@@selected_images" },
 
             // Send to all clients (clients will need to display each others' images later) as a map of (image ID -> image data)
-            { action: "client_ui", ui: { command: "cache_images", param: "@@selected_images" }, sendToAll: true },
+            { op: "client_ui", ui: { command: "cache_images", param: "@@selected_images" }, sendToAll: true },
 
             // Sync signal
-            { action: "copy", source: true, writeToStateVar: "@@client_finished" }
+            { op: "copy", source: true, writeToStateVar: "@@client_finished" }
         ]
     },
 
     // Wait for everyone to have made a submission
-    { action: "wait_for_state_var_all_users", stateVar: "@@client_finished" },
+    { op: "wait_for_state_var_all_users", stateVar: "@@client_finished" },
 
     // Gather up every clients array of image IDs in scene order and create a map of: client ID -> [image IDs]
-    { action: "gather_client_state_into_map_by_client_id", clientStateVar: "@@selected_image_ids", writeToStateVar: "@selected_image_ids_by_client_id" },
+    { op: "gather_client_state_into_map_by_client_id", clientStateVar: "@@selected_image_ids", writeToStateVar: "@selected_image_ids_by_client_id" },
 
     // Send image IDs to everyone (everyone has the image data by now)
-    { action: "client_ui", ui: { command: "slideshows_widget", param: { selectedImageIdsByClientId: "@selected_image_ids_by_client_id", winningClientIds: null } } },
-    { action: "client_ui", ui: { command: "instructions", param: "Which flick is your top pick?" } },
+    { op: "client_ui", ui: { command: "slideshows_widget", param: { selectedImageIdsByClientId: "@selected_image_ids_by_client_id", winningClientIds: null } } },
+    { op: "client_ui", ui: { command: "instructions", param: "Which flick is your top pick?" } },
 
     // Each user must vote
-    { action: "per_client", actions:
+    { op: "per_client", ops:
         [
             // Wait for vote (which is a client ID)
-            { action: "wait_for_state_var", stateVar: "@@vote" },
+            { op: "wait_for_state_var", stateVar: "@@vote" },
 
             // Wait for everyone else
-            { action: "client_ui", ui: { command: "slideshows_widget", param: { selectedImageIdsByClientId: null, winningClientIds: null } } }, // disables the widget
-            { action: "client_ui", ui: { command: "instructions", param: "Tallying the Academy's votes..." } },
+            { op: "client_ui", ui: { command: "slideshows_widget", param: { selectedImageIdsByClientId: null, winningClientIds: null } } }, // disables the widget
+            { op: "client_ui", ui: { command: "instructions", param: "Tallying the Academy's votes..." } },
         ]
     },
 
     // Wait for everyone to vote
-    { action: "wait_for_state_var_all_users", stateVar: "@@vote" },
+    { op: "wait_for_state_var_all_users", stateVar: "@@vote" },
 
     // Count votes and determine winner
-    { action: "gather_client_state_into_array", clientStateVar: "@@vote", writeToStateVar: "@votes" },
-    { action: "vote", stateVar: "@votes", writeToStateVar: "@winning_client_ids" },
-    { action: "client_ui", ui: { command: "slideshows_widget", param: { selectedImageIdsByClientId: null, winningClientIds: "@winning_client_ids" } } },    // re-enables the widget and shows only existing slideshows matching winning client IDs
-    { action: "client_ui", ui: { command: "instructions", param: "The award for best picture goes to..." } },
+    { op: "gather_client_state_into_array", clientStateVar: "@@vote", writeToStateVar: "@votes" },
+    { op: "vote", stateVar: "@votes", writeToStateVar: "@winning_client_ids" },
+    { op: "client_ui", ui: { command: "slideshows_widget", param: { selectedImageIdsByClientId: null, winningClientIds: "@winning_client_ids" } } },    // re-enables the widget and shows only existing slideshows matching winning client IDs
+    { op: "client_ui", ui: { command: "instructions", param: "The award for best picture goes to..." } },
 ];
 
 export { script }

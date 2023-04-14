@@ -48,30 +48,30 @@ class ScriptingContext
 {
     state = {};
 
-    _actions;
-    _actionIdx = 0;
+    _ops;
+    _opIdx = 0;
 
-    getCurrentScriptAction()
+    getCurrentScriptOp()
     {
-        return this._actionIdx < this._actions.length ? this._actions[this._actionIdx] : null;
+        return this._opIdx < this._ops.length ? this._ops[this._opIdx] : null;
     }
 
     goToNext()
     {
-        if (this._actionIdx < this._actions.length)
+        if (this._opIdx < this._ops.length)
         {
-            this._actionIdx += 1;
+            this._opIdx += 1;
         }
     }
 
     isFinished()
     {
-        return this._actionIdx >= this._actions.length;
+        return this._opIdx >= this._ops.length;
     }
 
-    constructor(actions)
+    constructor(ops)
     {
-        this._actions = actions;
+        this._ops = ops;
     }
 }
 
@@ -132,10 +132,10 @@ class Game
 
     _runNext()
     {
-        // First, process per-client actions
+        // First, process per-client ops
         this._runNextPerClient();
 
-        // Next, run global actions
+        // Next, run global ops
         this._runUntilBlocked(this._globalScriptCtx, null);
     }
 
@@ -163,8 +163,8 @@ class Game
         let canProceed = true;
         while (canProceed && !scriptCtx.isFinished())
         {
-            const action = scriptCtx.getCurrentScriptAction();
-            canProceed = this._execute(action, clientId);
+            const op = scriptCtx.getCurrentScriptOp();
+            canProceed = this._execute(op, clientId);
             if (canProceed)
             {
                 scriptCtx.goToNext();
@@ -177,42 +177,42 @@ class Game
         }
     }
 
-    _execute(action, clientId)
+    _execute(op, clientId)
     {
-        console.log(`-- Ctx=${!clientId ? "Global" : clientId} -- ${action.action}`);
+        console.log(`-- Ctx=${!clientId ? "Global" : clientId} -- ${op.op}`);
 
-        switch (action.action)
+        switch (op.op)
         {
         case "init_state":                      return this._do_init_state();
-        case "client_ui":                       return this._do_client_ui(action.ui, clientId, action.sendToAll);
-        case "random_choice":                   return this._do_random_choice(action, clientId);
+        case "client_ui":                       return this._do_client_ui(op.ui, clientId, op.sendToAll);
+        case "random_choice":                   return this._do_random_choice(op, clientId);
         case "per_client":
             if (clientId != null)
             {
-                console.log(`Error: per_client action cannot be nested further`);
+                console.log(`Error: per_client op cannot be nested further`);
                 return true;
             }
             else
             {
-                return this._do_per_client(action);
+                return this._do_per_client(op);
             }
-        case "wait_for_state_var":              return this._do_wait_for_state_var(action, clientId);
-        case "wait_for_state_var_all_users":    return this._do_wait_for_state_var_all_users(action);
-        case "txt2img":                         return this._do_txt2img(action, clientId);
-        case "depth2img":                       return this._do_depth2img(action, clientId);
-        case "gather_keys_into_array":          return this._do_gather_keys_into_array(action, clientId);
-        case "gather_client_state_into_set":    return this._do_gather_client_state_into_set(action);
-        case "gather_client_state_into_array":  return this._do_gather_client_state_into_array(action);
+        case "wait_for_state_var":              return this._do_wait_for_state_var(op, clientId);
+        case "wait_for_state_var_all_users":    return this._do_wait_for_state_var_all_users(op);
+        case "txt2img":                         return this._do_txt2img(op, clientId);
+        case "depth2img":                       return this._do_depth2img(op, clientId);
+        case "gather_keys_into_array":          return this._do_gather_keys_into_array(op, clientId);
+        case "gather_client_state_into_set":    return this._do_gather_client_state_into_set(op);
+        case "gather_client_state_into_array":  return this._do_gather_client_state_into_array(op);
         case "gather_client_state_into_map_by_client_id":
-                                                return this._do_gather_client_state_into_map_by_client_id(action);
-        case "gather_images_into_map":          return this._do_gather_images_into_map(action, clientId);
-        case "vote":                            return this._do_vote(action, clientId);
-        case "select":                          return this._do_select(action, clientId);
-        case "copy":                            return this._do_copy(action, clientId);
-        case "delete":                          return this._do_delete(action, clientId);
-        case "make_map":                        return this._do_make_map(action, clientId);
+                                                return this._do_gather_client_state_into_map_by_client_id(op);
+        case "gather_images_into_map":          return this._do_gather_images_into_map(op, clientId);
+        case "vote":                            return this._do_vote(op, clientId);
+        case "select":                          return this._do_select(op, clientId);
+        case "copy":                            return this._do_copy(op, clientId);
+        case "delete":                          return this._do_delete(op, clientId);
+        case "make_map":                        return this._do_make_map(op, clientId);
         default:
-            console.log(`Error: Unknown action: ${action.action}`);
+            console.log(`Error: Unknown op: ${op.op}`);
             return false;
         }
     }
@@ -364,18 +364,18 @@ class Game
         return true;
     }
 
-    _do_random_choice(action, clientId)
+    _do_random_choice(op, clientId)
     {
-        this._writeToStateVar(clientId, action.writeToStateVar, randomChoice(action.choices));
+        this._writeToStateVar(clientId, op.writeToStateVar, randomChoice(op.choices));
         return true;
     }
 
-    _do_per_client(action)
+    _do_per_client(op)
     {
         // Set up new per-client scripting contexts
         for (const clientId of this._clientIds)
         {
-            this._perClientScriptCtx[clientId] = new ScriptingContext(action.actions);
+            this._perClientScriptCtx[clientId] = new ScriptingContext(op.ops);
         }
 
         // Kick it off
@@ -384,132 +384,132 @@ class Game
         return true;
     }
 
-    _do_wait_for_state_var(action, clientId)
+    _do_wait_for_state_var(op, clientId)
     {
-        return this._checkStateVarExists(clientId, action.stateVar);
+        return this._checkStateVarExists(clientId, op.stateVar);
     }
 
-    _do_wait_for_state_var_all_users(action)
+    _do_wait_for_state_var_all_users(op)
     {
-        if (!action.stateVar.startsWith("@@"))
+        if (!op.stateVar.startsWith("@@"))
         {
-            console.log(`Error: wait_for_state_var_all_users expected a per-client state variable but got: ${action.stateVar}`);
+            console.log(`Error: wait_for_state_var_all_users expected a per-client state variable but got: ${op.stateVar}`);
             return false;
         }
 
         let present = true;
         for (const clientId of this._clientIds)
         {
-            present &= this._checkStateVarExists(clientId, action.stateVar);
+            present &= this._checkStateVarExists(clientId, op.stateVar);
         }
         return present;
     }
 
-    _do_txt2img(action, clientId)
+    _do_txt2img(op, clientId)
     {
-        const prompt = this._expandStateVar(clientId, action.prompt);
-        makeTxt2ImgRequest(clientId, prompt, action.writeToStateVar);
+        const prompt = this._expandStateVar(clientId, op.prompt);
+        makeTxt2ImgRequest(clientId, prompt, op.writeToStateVar);
         return true;
     }
 
-    _do_depth2img(action, clientId)
+    _do_depth2img(op, clientId)
     {
-        const params = this._expandStateVar(clientId, action.params);
-        makeDepth2ImgRequest(clientId, params, action.writeToStateVar);
+        const params = this._expandStateVar(clientId, op.params);
+        makeDepth2ImgRequest(clientId, params, op.writeToStateVar);
         return true;
     }
 
-    _do_gather_keys_into_array(action, clientId)
+    _do_gather_keys_into_array(op, clientId)
     {
         let array = [];
-        const srcMap = this._expandStateVar(clientId, action.stateVar);
+        const srcMap = this._expandStateVar(clientId, op.stateVar);
         if (srcMap.constructor === Object)
         {
             array = Object.keys(srcMap);
         }
         else
         {
-            console.log(`Error: gather_keys_into_array expected a map but got: ${action.stateVar}`);
+            console.log(`Error: gather_keys_into_array expected a map but got: ${op.stateVar}`);
         }
-        this._writeToStateVar(clientId, action.writeToStateVar, array);
+        this._writeToStateVar(clientId, op.writeToStateVar, array);
         return true;
     }
 
-    _do_gather_client_state_into_set(action)
+    _do_gather_client_state_into_set(op)
     {
-        if (!action.clientStateVar.startsWith("@@"))
+        if (!op.clientStateVar.startsWith("@@"))
         {
-            console.log(`Error: gather_client_state_into_set expected a per-client state variable but got: ${action.clientStateVar}`);
+            console.log(`Error: gather_client_state_into_set expected a per-client state variable but got: ${op.clientStateVar}`);
             return false;
         }
 
         const aggregated = new Set();
         for (const clientId of this._clientIds)
         {
-            const variable = this._expandStateVar(clientId, action.clientStateVar);
+            const variable = this._expandStateVar(clientId, op.clientStateVar);
             if (variable)
             {
                 aggregated.add(variable);
             }
         }
 
-        this._writeToStateVar(null, action.writeToStateVar, aggregated);
+        this._writeToStateVar(null, op.writeToStateVar, aggregated);
 
         return true;
     }
 
-    _do_gather_client_state_into_array(action)
+    _do_gather_client_state_into_array(op)
     {
-        if (!action.clientStateVar.startsWith("@@"))
+        if (!op.clientStateVar.startsWith("@@"))
         {
-            console.log(`Error: gather_client_state_into_array expected a per-client state variable but got: ${action.clientStateVar}`);
+            console.log(`Error: gather_client_state_into_array expected a per-client state variable but got: ${op.clientStateVar}`);
             return false;
         }
 
         const aggregated = [];
         for (const clientId of this._clientIds)
         {
-            const variable = this._expandStateVar(clientId, action.clientStateVar);
+            const variable = this._expandStateVar(clientId, op.clientStateVar);
             if (variable)
             {
                 aggregated.push(variable);
             }
         }
 
-        this._writeToStateVar(null, action.writeToStateVar, aggregated);
+        this._writeToStateVar(null, op.writeToStateVar, aggregated);
 
         return true;
     }
 
-    _do_gather_client_state_into_map_by_client_id(action)
+    _do_gather_client_state_into_map_by_client_id(op)
     {
-        if (!action.clientStateVar.startsWith("@@"))
+        if (!op.clientStateVar.startsWith("@@"))
         {
-            console.log(`Error: gather_client_state_into_map_by_client_id expected a per-client state variable but got: ${action.clientStateVar}`);
+            console.log(`Error: gather_client_state_into_map_by_client_id expected a per-client state variable but got: ${op.clientStateVar}`);
             return false;
         }
 
         const aggregated = {};
         for (const clientId of this._clientIds)
         {
-            const variable = this._expandStateVar(clientId, action.clientStateVar);
+            const variable = this._expandStateVar(clientId, op.clientStateVar);
             if (variable)
             {
                 aggregated[clientId] = variable;
             }
         }
 
-        this._writeToStateVar(null, action.writeToStateVar, aggregated);
+        this._writeToStateVar(null, op.writeToStateVar, aggregated);
 
         return true;
     }
 
-    _do_gather_images_into_map(action, clientId)
+    _do_gather_images_into_map(op, clientId)
     {
-        const selectedImageIds = this._expandStateVar(clientId, action.fromStateVar);
+        const selectedImageIds = this._expandStateVar(clientId, op.fromStateVar);
         if (!selectedImageIds)
         {
-            console.log(`Error: gather_images_into_map was unable to read from ${action.fromStateVar}`);
+            console.log(`Error: gather_images_into_map was unable to read from ${op.fromStateVar}`);
             return false;
         }
 
@@ -527,53 +527,53 @@ class Game
             }
         }
 
-        this._writeToStateVar(clientId, action.writeToStateVar, aggregated);
+        this._writeToStateVar(clientId, op.writeToStateVar, aggregated);
 
         return true;
     }
 
-    _do_vote(action, clientId)
+    _do_vote(op, clientId)
     {
-        const votes = this._expandStateVar(clientId, action.stateVar);
+        const votes = this._expandStateVar(clientId, op.stateVar);
         if (!votes || !(votes.length > 0))
         {
-            console.log(`Error: Unable to vote on null or empty vote array read from ${action.stateVar}`);
+            console.log(`Error: Unable to vote on null or empty vote array read from ${op.stateVar}`);
             return false;
         }
 
         const winningVotes = tallyVotes(votes);
-        this._writeToStateVar(clientId, action.writeToStateVar, winningVotes);
+        this._writeToStateVar(clientId, op.writeToStateVar, winningVotes);
 
         return true;
     }
 
-    _do_select(action, clientId)
+    _do_select(op, clientId)
     {
-        const selection = this._expandStateVar(clientId, action.stateVar);
-        const selections = this._expandStateVar(clientId, action.selections);
+        const selection = this._expandStateVar(clientId, op.stateVar);
+        const selections = this._expandStateVar(clientId, op.selections);
         const selectedValue = selections[selection];
-        this._writeToStateVar(clientId, action.writeToStateVar, selectedValue);
+        this._writeToStateVar(clientId, op.writeToStateVar, selectedValue);
         return true;
     }
 
-    _do_copy(action, clientId)
+    _do_copy(op, clientId)
     {
-        const src = this._expandStateVar(clientId, action.source);
-        this._writeToStateVar(clientId, action.writeToStateVar, src);
+        const src = this._expandStateVar(clientId, op.source);
+        this._writeToStateVar(clientId, op.writeToStateVar, src);
         return true;
     }
 
-    _do_delete(action, clientId)
+    _do_delete(op, clientId)
     {
-        this._deleteStateVar(clientId, action.stateVar);
+        this._deleteStateVar(clientId, op.stateVar);
         return true;
     }
 
-    _do_make_map(action, clientId)
+    _do_make_map(op, clientId)
     {
         const map = {};
-        const keys = this._expandStateVar(clientId, action.keys);
-        const values = this._expandStateVar(clientId, action.values);
+        const keys = this._expandStateVar(clientId, op.keys);
+        const values = this._expandStateVar(clientId, op.values);
 
         if (!keys || !values || keys.constructor != Array || values.constructor != Array)
         {
@@ -591,14 +591,14 @@ class Game
             }
         }
 
-        this._writeToStateVar(clientId, action.writeToStateVar, map);
+        this._writeToStateVar(clientId, op.writeToStateVar, map);
 
         return true;
     }
 
-    constructor(actions, clientIds)
+    constructor(ops, clientIds)
     {
-        this._globalScriptCtx = new ScriptingContext(actions);
+        this._globalScriptCtx = new ScriptingContext(ops);
         this._clientIds = clientIds;
     }
 }
