@@ -7,6 +7,7 @@
  *
  * TODO Next:
  * ----------
+ * - Depth2img parameters might not match old Python version. Need to double check again.
  * - Image requests need to be properly serialized because option get requests return immediately and
  *   it is not clear if they are returning the currently-used options or last-set options, so even if
  *   image server is serializing internally, we may have an issue where we fail to set the model
