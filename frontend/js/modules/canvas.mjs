@@ -117,13 +117,13 @@ class Canvas
         // Clear canvas for drawing
         this.clear();
 
-        // Mouse events work with jQuery
+        // Mouse events
         this._canvas.addEventListener("mousedown", (event) => self._onMouseDown(event));
         this._canvas.addEventListener("mouseup", (event) => self._onMouseUp(event));
         this._canvas.addEventListener("mousemove", (event) => self._onMouseMove(event));
         this._canvas.addEventListener("mouseout", (event) => self._onMouseOut(event));
 
-        // Touch events cannot be handled by jQuery
+        // Touch events (for phones)
         this._canvas.addEventListener("touchstart", (event) => self._onTouchStart(event), false);
         this._canvas.addEventListener("touchend", (event) => self._onTouchEnd(event), false);
         this._canvas.addEventListener("touchmove", (event) => self._onTouchMove(event), false);
