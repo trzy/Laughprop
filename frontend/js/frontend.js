@@ -21,6 +21,7 @@ import
     ClientUIMessage,
     ClientInputMessage
 } from "./modules/messages.mjs";
+import { Canvas } from "./modules/canvas.mjs";
 
 
 /**************************************************************************************************
