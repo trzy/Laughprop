@@ -10,6 +10,7 @@ class Canvas
     _canvas;
     _ctx;
     _isMouseDown = false;
+    _lastDrawnPosition = null;  // if not null, draw a line to connect else draw an arc
 
     _onMouseMove(event)
     {
@@ -29,35 +30,57 @@ class Canvas
 
         console.log(x, y, elementX, elementY);
 
+        // New point
         this._ctx.fillStyle = "#000";
         this._ctx.beginPath();
         this._ctx.arc(x, y, 2, 0, 2 * Math.PI);
         this._ctx.fill();
+
+        // Connect line
+        if (this._lastDrawnPosition != null)
+        {
+            let x0 = this._lastDrawnPosition[0];
+            let y0 = this._lastDrawnPosition[1];
+            this._ctx.fillStyle = "#000";
+            this._ctx.lineWidth = 4;
+            this._ctx.lineJoin = "round";
+            this._ctx.beginPath();
+            this._ctx.moveTo(x0, y0);
+            this._ctx.lineTo(x, y);
+            this._ctx.stroke();
+        }
+
+        this._lastDrawnPosition = [ x, y ];
     }
 
     _onMouseOut(event)
     {
         this._isMouseDown = false;
+        this._lastDrawnPosition = null;
     }
 
     _onMouseDown(event)
     {
         this._isMouseDown = true;
+        this._lastDrawnPosition = null;
     }
 
     _onMouseUp(event)
     {
         this._isMouseDown = false;
+        this._lastDrawnPosition = null;
     }
 
     _onTouchStart(event)
     {
         this._isMouseDown = true;
+        this._lastDrawnPosition = null;
     }
 
     _onTouchEnd(event)
     {
         this._isMouseDown = false;
+        this._lastDrawnPosition = null;
     }
 
     _onTouchMove(event)
