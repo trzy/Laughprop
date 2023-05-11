@@ -13,7 +13,7 @@ const script = [
 
     // Show drawing canvas
     { op: "client_ui", ui: { command: "canvas_widget", param: true } },
-    { op: "client_ui", ui: { command: "instructions", param: "Draw something and include a description!" } },
+    { op: "client_ui", ui: { command: "instructions", param: "Draw something and include a description below!" } },
 
     // Wait until an image is received
     { op: "per_client", ops:
@@ -23,7 +23,7 @@ const script = [
 
             // Generate images
             { op: "client_ui", ui: { command: "instructions", param: "Just a moment. Generating images..." } },
-            //{ op: "client_ui", ui: { command: "canvas_widget", param: null } },
+            { op: "client_ui", ui: { command: "canvas_widget", param: null } },
             { op: "sketch2img", prompt: "@@prompt", image: "@@user_drawing", writeToStateVar: "@@image_candidates_by_id" },
 
             // Wait for image candidates to arrive

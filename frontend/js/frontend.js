@@ -276,6 +276,7 @@ const _instructions = $("#Instructions");
 const _returnToLobbyButton = $("#ReturnToLobbyButton");
 
 const _canvasContainer = $("#CanvasContainer");
+const _drawingPromptTextField = $("#DrawingPromptTextField");
 const _submitDrawingButton = $("#CanvasContainer #SubmitDrawingButton");
 const _clearDrawingButton = $("#CanvasContainer #ClearDrawingButton");
 const _canvas = new Canvas();
@@ -857,10 +858,23 @@ function onClientUIMessage(msg)
             _submitDrawingButton.off("click").click(function()
             {
                 let imageData = _canvas.getBase64ImageData();
-                const msg = new ClientInputMessage({ "@@user_drawing": imageData, "@@prompt": "a photo of Sonic the hedgehog" });
+                const msg = new ClientInputMessage({ "@@user_drawing": imageData, "@@prompt": _drawingPromptTextField.val() });
                 sendMessage(msg);
             });
 
+            // Submit button enabled only when prompt is filled out
+            _drawingPromptTextField.val("").off("input").on("input", function(e)
+            {
+                if (_drawingPromptTextField.val().length > 0)
+                {
+                    _submitDrawingButton.removeClass("button-disabled");
+                }
+                else
+                {
+                    _submitDrawingButton.addClass("button-disabled");
+                }
+            });
+            _submitDrawingButton.addClass("button-disabled");
 
             _canvasContainer.show();
         }
