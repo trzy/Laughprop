@@ -1241,7 +1241,7 @@ function makeSketch2ImgRequest(clientId, prompt, inputImageBase64, destStateVar)
 // Sketch2img is text2img/img2img plus ControlNet scribble mode
 function continueSketch2ImgRequest(clientId, prompt, inputImageBase64, session, destStateVar)
 {
-    /*
+
     // Defaults
     const payload = {
         "enable_hr": false,
@@ -1296,86 +1296,29 @@ function continueSketch2ImgRequest(clientId, prompt, inputImageBase64, session, 
             "args": [
                 {
                     "input_image": inputImageBase64,
-                    "module": "scribble",
-                    "model": "control_sd15_scribble [fef5e48e]",
-                    "weight": 1,
+                    "mask": "",
+                    "module": "invert (from white bg & black line)",    // images submitted as white background and black lines, need to invert them
+                    "model": "control_v11p_sd15_scribble [d4ba51ff]",
+                    "weight": 1.0,
                     "processor_res": 512,
+                    "resize_mode": "Scale to Fit (Inner Fit)",
+                    "lowvram": false,
+                    "threshold_a": 0.0,
+					"threshold_b": 255.0,
+					"guidance": 1.0,
+					"guidance_start": 0.0,
+					"guidance_end": 1.0,
+					//"guessmode": false
                 },
             ]
         }
     };
-    */
-
-    const payload = {
-        "enable_hr": false,
-        "hr_scale" : 2,
-        "hr_upscaler" : "Latent",
-        "hr_second_pass_steps" : 0,
-        "hr_resize_x": 0,
-        "hr_resize_y": 0,
-        "denoising_strength": 0.0,
-        "firstphase_width": 0,
-        "firstphase_height": 0,
-        "prompt": "",
-        "styles": [],
-        "seed": -1,
-        "subseed": -1,
-        "subseed_strength": 0.0,
-        "seed_resize_from_h": -1,
-        "seed_resize_from_w": -1,
-        "batch_size": 1,
-        "n_iter": 1,
-        "steps": 20,
-        "cfg_scale": 7.0,
-        "width": 512,
-        "height": 512,
-        "restore_faces": false,
-        "tiling": false,
-        "negative_prompt": "",
-        "eta": 0,
-        "s_churn": 0,
-        "s_tmax": 0,
-        "s_tmin": 0,
-        "s_noise": 1,
-        "override_settings": {},
-        "override_settings_restore_afterwards": true,
-        "sampler_name": "Euler a",
-        "sampler_index": "Euler a",
-        "script_name": null,
-        "script_args": []
-    };
-
-    // Our params
-    payload["prompt"] = prompt;
-    payload["seed"] = 42;
-    payload["cfg_scale"] = 9;   // 7?
-    payload["steps"] = 40;
-    payload["batch_size"] = 4;
-    payload["controlnet_units"] = [
-        {
-            "input_image": inputImageBase64,
-            //"mask": _whiteMaskImage,
-            //"mask": "",
-            "module": "scribble",
-            "model": "control_sd15_scribble [fef5e48e]",
-            "weight": 1,
-            "resize_mode": "Scale to Fit (Inner Fit)",
-            "lowvram": false,
-            "processor_res": 64,
-            "threshold_a": 64,
-            "threshold_b": 64,
-            "guidance": 1,
-            "guidance_start": 0,
-            "guidance_end": 1,
-            "guessmode": true
-        }
-    ];
 
     // Post request
     const urlParams = {
         host: _imageServerParams.host,
         port: _imageServerParams.port,
-        path: "/controlnet/txt2img",
+        path: "/sdapi/v1/txt2img",
         method: "POST",
         headers: { "Content-Type": "application/json" }
     };

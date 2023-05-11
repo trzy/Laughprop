@@ -856,7 +856,6 @@ function onClientUIMessage(msg)
 
             _submitDrawingButton.off("click").click(function()
             {
-                _canvas.invertColors();
                 let imageData = _canvas.getBase64ImageData();
                 const msg = new ClientInputMessage({ "@@user_drawing": imageData, "@@prompt": "a photo of Sonic the hedgehog" });
                 sendMessage(msg);
