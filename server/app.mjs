@@ -844,8 +844,6 @@ const _imageServerParams = {
     depth2ImgModel: "512-depth-ema.ckpt"
 };
 
-var _blackMaskImage;
-var _whiteMaskImage;
 var _placeholderImages = [];
 var _inputImageByAssetPath = {};
 
@@ -1401,12 +1399,6 @@ function loadRequiredImageAssets()
         const base64 = buffer.toString("base64");
         _placeholderImages.push(base64);
     }
-
-    // Mask images (single color, 512x512)
-    let buffer = fs.readFileSync("../assets/BlackMaskImage.png");
-    _blackMaskImage = buffer.toString("base64");
-    buffer = fs.readFileSync("../assets/WhiteMaskImage.png");
-    _whiteMaskImage = buffer.toString("base64");
 }
 
 
