@@ -40,6 +40,7 @@ import { generateSessionId, randomChoice, tallyVotes } from "./modules/utils.mjs
 import * as variable_expansion from "./modules/variable_expansion.mjs";
 import * as themed_image_game from "./modules/games/themed_image.mjs";
 import * as movie_game from "./modules/games/movies.mjs";
+import * as drawing_game from "./modules/games/drawing_game.mjs";
 
 
 /**************************************************************************************************
@@ -204,6 +205,7 @@ class Game
         case "wait_for_state_var_all_users":    return this._do_wait_for_state_var_all_users(op);
         case "txt2img":                         return this._do_txt2img(op, clientId);
         case "depth2img":                       return this._do_depth2img(op, clientId);
+        case "sketch2img":                      return this._do_sketch2img(op, clientId);
         case "gather_keys_into_array":          return this._do_gather_keys_into_array(op, clientId);
         case "gather_client_state_into_set":    return this._do_gather_client_state_into_set(op);
         case "gather_client_state_into_array":  return this._do_gather_client_state_into_array(op);
@@ -420,6 +422,14 @@ class Game
     {
         const params = this._expandStateVar(clientId, op.params);
         makeDepth2ImgRequest(clientId, params, op.writeToStateVar);
+        return true;
+    }
+
+    _do_sketch2img(op, clientId)
+    {
+        const prompt = this._expandStateVar(clientId, op.prompt);
+        const image = this._expandStateVar(clientId, op.image);
+        makeSketch2ImgRequest(clientId, prompt, image, op.writeToStateVar);
         return true;
     }
 
@@ -749,6 +759,10 @@ class Session
             this._game = new Game(movie_game.script, this._clientIds);
             this._game.start();
             break;
+        case "Drawing Game":
+            this._game = new Game(drawing_game.script, this._clientIds);
+            this._game.start();
+            break;
         }
     }
 
@@ -830,6 +844,8 @@ const _imageServerParams = {
     depth2ImgModel: "512-depth-ema.ckpt"
 };
 
+var _blackMaskImage;
+var _whiteMaskImage;
 var _placeholderImages = [];
 var _inputImageByAssetPath = {};
 
@@ -1202,7 +1218,237 @@ function continueDepth2ImgRequest(clientId, params, session, destStateVar)
     request.end();
 }
 
-function loadPlaceholderImages()
+function makeSketch2ImgRequest(clientId, prompt, inputImageBase64, destStateVar)
+{
+    const session = tryGetSessionByClientId(clientId);
+    if (!session)
+    {
+        console.log(`Error: Dropping image response because no session for clientId=${clientId}`);
+        return;
+    }
+
+    getImageServerOptions(options =>
+    {
+        const model = options["sd_model_checkpoint"];
+        if (_imageServerParams.txt2ImgModel != model)
+        {
+            setImageModel(_imageServerParams.txt2ImgModel);
+        }
+        continueSketch2ImgRequest(clientId, prompt, inputImageBase64, session, destStateVar);
+    });
+}
+
+// Sketch2img is text2img/img2img plus ControlNet scribble mode
+function continueSketch2ImgRequest(clientId, prompt, inputImageBase64, session, destStateVar)
+{
+    /*
+    // Defaults
+    const payload = {
+        "enable_hr": false,
+        "hr_scale" : 2,
+        "hr_upscaler" : "Latent",
+        "hr_second_pass_steps" : 0,
+        "hr_resize_x": 0,
+        "hr_resize_y": 0,
+        "denoising_strength": 0.0,
+        "firstphase_width": 0,
+        "firstphase_height": 0,
+        "prompt": "",
+        "styles": [],
+        "seed": -1,
+        "subseed": -1,
+        "subseed_strength": 0.0,
+        "seed_resize_from_h": -1,
+        "seed_resize_from_w": -1,
+        "batch_size": 1,
+        "n_iter": 1,
+        "steps": 20,
+        "cfg_scale": 7.0,
+        "width": 512,
+        "height": 512,
+        "restore_faces": false,
+        "tiling": false,
+        "negative_prompt": "",
+        "eta": 0,
+        "s_churn": 0,
+        "s_tmax": 0,
+        "s_tmin": 0,
+        "s_noise": 1,
+        "override_settings": {},
+        "override_settings_restore_afterwards": true,
+        "sampler_name": "Euler a",
+        "sampler_index": "Euler a",
+        "script_name": null,
+        "script_args": []
+    };
+
+    // Our params
+    payload["prompt"] = prompt;
+    payload["seed"] = 42;
+    payload["cfg_scale"] = 9;   // 7?
+    payload["steps"] = 40;
+    payload["batch_size"] = 4;
+    payload["init_images"] = [ inputImageBase64 ];
+
+    // ControlNet stuff
+    payload["alwayson_scripts"] = {
+        "controlnet": {
+            "args": [
+                {
+                    "input_image": inputImageBase64,
+                    "module": "scribble",
+                    "model": "control_sd15_scribble [fef5e48e]",
+                    "weight": 1,
+                    "processor_res": 512,
+                },
+            ]
+        }
+    };
+    */
+
+    const payload = {
+        "enable_hr": false,
+        "hr_scale" : 2,
+        "hr_upscaler" : "Latent",
+        "hr_second_pass_steps" : 0,
+        "hr_resize_x": 0,
+        "hr_resize_y": 0,
+        "denoising_strength": 0.0,
+        "firstphase_width": 0,
+        "firstphase_height": 0,
+        "prompt": "",
+        "styles": [],
+        "seed": -1,
+        "subseed": -1,
+        "subseed_strength": 0.0,
+        "seed_resize_from_h": -1,
+        "seed_resize_from_w": -1,
+        "batch_size": 1,
+        "n_iter": 1,
+        "steps": 20,
+        "cfg_scale": 7.0,
+        "width": 512,
+        "height": 512,
+        "restore_faces": false,
+        "tiling": false,
+        "negative_prompt": "",
+        "eta": 0,
+        "s_churn": 0,
+        "s_tmax": 0,
+        "s_tmin": 0,
+        "s_noise": 1,
+        "override_settings": {},
+        "override_settings_restore_afterwards": true,
+        "sampler_name": "Euler a",
+        "sampler_index": "Euler a",
+        "script_name": null,
+        "script_args": []
+    };
+
+    // Our params
+    payload["prompt"] = prompt;
+    payload["seed"] = 42;
+    payload["cfg_scale"] = 9;   // 7?
+    payload["steps"] = 40;
+    payload["batch_size"] = 4;
+    payload["controlnet_units"] = [
+        {
+            "input_image": inputImageBase64,
+            //"mask": _whiteMaskImage,
+            //"mask": "",
+            "module": "scribble",
+            "model": "control_sd15_scribble [fef5e48e]",
+            "weight": 1,
+            "resize_mode": "Scale to Fit (Inner Fit)",
+            "lowvram": false,
+            "processor_res": 64,
+            "threshold_a": 64,
+            "threshold_b": 64,
+            "guidance": 1,
+            "guidance_start": 0,
+            "guidance_end": 1,
+            "guessmode": true
+        }
+    ];
+
+    // Post request
+    const urlParams = {
+        host: _imageServerParams.host,
+        port: _imageServerParams.port,
+        path: "/controlnet/txt2img",
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+    };
+
+    function dummyResponse()
+    {
+        // Use placeholder images
+        const imageByUuid = {};
+        for (let i = 0; i < payload["batch_size"]; i++)
+        {
+            imageByUuid[crypto.randomUUID()] = randomChoice(_placeholderImages);
+        }
+        session.receiveImageResponse(clientId, destStateVar, imageByUuid);
+    }
+
+    function onResponse(response)
+    {
+        let data = "";
+        response.on("data", (chunk) =>
+        {
+            data += chunk;
+        });
+        response.on("end", () =>
+        {
+            try
+            {
+                const responseObj = JSON.parse(data);
+                if (!responseObj["images"])
+                {
+                    console.log("Error: Did not receive any images");
+                    dummyResponse();
+                }
+                else
+                {
+                    const numImagesExpected = payload["batch_size"] * payload["n_iter"];
+                    const numImages = Math.min(responseObj["images"].length, numImagesExpected);
+                    const imageByUuid = {};
+
+                    for (let i = 0; i < numImages; i++)
+                    {
+                        imageByUuid[crypto.randomUUID()] = responseObj["images"][i];
+                    }
+
+                    // This should never happen but in case it does, pad with the first image
+                    for (let i = numImages; i < numImagesExpected; i++)
+                    {
+                        imageByUuid[crypto.randomUUID()] = responseObj["images"][0];
+                    }
+
+                    // Return
+                    session.receiveImageResponse(clientId, destStateVar, imageByUuid);
+                }
+            }
+            catch (error)
+            {
+                console.log("Error: Unable to parse response from image server");
+                dummyResponse();
+            }
+        });
+    }
+
+    const request = http.request(urlParams, onResponse);
+    request.on("error", error =>
+    {
+        console.log(`Error: sketch2img request failed`);
+        console.log(error);
+        dummyResponse();
+    });
+    request.write(JSON.stringify(payload));
+    request.end();
+}
+
+function loadRequiredImageAssets()
 {
     const filepaths = [ "../assets/RickAstley.jpg", "../assets/Plissken2.jpg", "../assets/KermitPlissken.jpg", "../assets/SpaceFarley.jpg" ];
     _placeholderImages = [];
@@ -1212,6 +1458,12 @@ function loadPlaceholderImages()
         const base64 = buffer.toString("base64");
         _placeholderImages.push(base64);
     }
+
+    // Mask images (single color, 512x512)
+    let buffer = fs.readFileSync("../assets/BlackMaskImage.png");
+    _blackMaskImage = buffer.toString("base64");
+    buffer = fs.readFileSync("../assets/WhiteMaskImage.png");
+    _whiteMaskImage = buffer.toString("base64");
 }
 
 
@@ -1473,7 +1725,7 @@ function onClientInputMessage(socket, msg)
  Program Entry Point
 **************************************************************************************************/
 
-loadPlaceholderImages();
+loadRequiredImageAssets();
 
 // Web server
 const port = 8080;

@@ -214,7 +214,8 @@ function onReturnToLobby(gameInterruptedReason)
 
 const _funniestImageGameButton = $("#SelectGameScreen #FunniestImageGameButton")
 const _movieGameButton = $("#SelectGameScreen #MovieGameButton");
-const _gameButtons = [ _funniestImageGameButton, _movieGameButton ];
+const _drawingGameButton = $("#SelectGameScreen #DrawingGameButton");
+const _gameButtons = [ _funniestImageGameButton, _movieGameButton, _drawingGameButton ];
 
 function onFunniestImageGameButtonClicked()
 {
@@ -228,6 +229,13 @@ function onMovieGameButtonClicked()
     deselectAllButtons();
     _movieGameButton.addClass("button-selected");
     sendMessage(new ChooseGameMessage("I'd Watch That"));
+}
+
+function onDrawingGameButtonClicked()
+{
+    deselectAllButtons();
+    _drawingGameButton.addClass("button-selected");
+    sendMessage(new ChooseGameMessage("Drawing Game"));
 }
 
 function deselectAllButtons()
@@ -246,6 +254,7 @@ function onSelectGameState(msg)
 
     _funniestImageGameButton.off("click").click(function() { onFunniestImageGameButtonClicked() });
     _movieGameButton.off("click").click(function() { onMovieGameButtonClicked() });
+    _drawingGameButton.off("click").click(function() { onDrawingGameButtonClicked(); });
     deselectAllButtons();
 }
 
@@ -265,6 +274,11 @@ const _instructionsContainer = $("#InstructionsContainer");
 const _instructions = $("#Instructions");
 
 const _returnToLobbyButton = $("#ReturnToLobbyButton");
+
+const _canvasContainer = $("#CanvasContainer");
+const _submitDrawingButton = $("#CanvasContainer #SubmitDrawingButton");
+const _clearDrawingButton = $("#CanvasContainer #ClearDrawingButton");
+const _canvas = new Canvas();
 
 const _promptContainer = $("#PromptContainer");
 const _promptDescription = $("#PromptDescription");
@@ -333,7 +347,7 @@ const _voteMovieButton = $("#Slideshows #VoteMovieButton");
 let _slideshows = [];
 let _slideshowTimer = null;
 
-const _containers = [ _gameTitleContainer, _instructionsContainer, _promptContainer, _carouselContainer, _candidatesContainer, _winningImagesContainer, _multiSelectMultiPromptContainer, _slideshowsContainer ];
+const _containers = [ _gameTitleContainer, _instructionsContainer, _canvasContainer, _promptContainer, _carouselContainer, _candidatesContainer, _winningImagesContainer, _multiSelectMultiPromptContainer, _slideshowsContainer ];
 
 function onImageThumbnailClicked(idx)
 {
@@ -825,6 +839,35 @@ function onClientUIMessage(msg)
                 _slideshowsContainer.show();
                 _returnToLobbyButton.hide();
             }
+        }
+        break;
+    }
+
+    case "canvas_widget":
+    {
+        if (msg.command.param)
+        {
+            _canvas.clear();
+
+            _clearDrawingButton.off("click").click(function()
+            {
+                _canvas.clear();
+            });
+
+            _submitDrawingButton.off("click").click(function()
+            {
+                _canvas.invertColors();
+                let imageData = _canvas.getBase64ImageData();
+                const msg = new ClientInputMessage({ "@@user_drawing": imageData, "@@prompt": "a photo of Sonic the hedgehog" });
+                sendMessage(msg);
+            });
+
+
+            _canvasContainer.show();
+        }
+        else
+        {
+            _canvasContainer.hide();
         }
         break;
     }

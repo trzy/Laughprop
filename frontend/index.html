@@ -71,6 +71,7 @@
             <div class="center-children row">
                 <div id="FunniestImageGameButton" class="button column">It's a Mood</div>
                 <div id="MovieGameButton" class="button column">I'd Watch That</div>
+                <div id="DrawingGameButton" class="button column">Drawing Game</div>
             </div>
 
         </div>
@@ -86,6 +87,17 @@
             <!-- Instructions for what to do printed at the top. -->
             <div id="InstructionsContainer" class="message text-center">
                 <span id="Instructions"></span>
+            </div>
+
+            <!-- Drawing canvas -->
+            <div id="CanvasContainer">
+                <div class="center-children">
+                    <canvas id="Canvas" width="512" height="512" style="width: 100%; height: 80vh; border: 1px solid black; touch-action: none"></canvas>
+                </div>
+                <div class="center-children">
+                    <div id="SubmitDrawingButton" class="button column">Submit</div>
+                    <div id="ClearDrawingButton" class="button column">Clear</div>
+                </div>
             </div>
 
             <!-- Prompt entry w/ submit button -->

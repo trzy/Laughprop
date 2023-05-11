@@ -100,6 +100,31 @@ class Canvas
         this._ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
     }
 
+    invertColors()
+    {
+        // Get the pixel data for the entire canvas
+        var imageData = this._ctx.getImageData(0, 0, this._canvas.width, this._canvas.height);
+        var data = imageData.data;
+
+        // Loop through each pixel and invert its color
+        for (var i = 0; i < data.length; i += 4) {
+          // Invert the red, green, and blue components of the pixel
+          data[i] = 255 - data[i];         // red
+          data[i + 1] = 255 - data[i + 1]; // green
+          data[i + 2] = 255 - data[i + 2]; // blue
+          // Leave the alpha component unchanged
+        }
+
+        // Put the modified pixel data back onto the canvas
+        this._ctx.putImageData(imageData, 0, 0);
+    }
+
+    getBase64ImageData()
+    {
+        // toDataURL() returns a base64-encoded image with header that must be stripped out
+        return this._canvas.toDataURL("image/png").replace("data:image/png;base64,", "");
+    }
+
     constructor()
     {
         let self = this;
