@@ -90,3 +90,6 @@ output/*.jpg
 
 *.swp
 *.swo
+
+.idea/
+.next/
