@@ -94,14 +94,45 @@
                 <div class="center-children">
                     <canvas id="Canvas" width="512" height="512" style="width: 100%; height: 80vh; border: 1px solid black; touch-action: none"></canvas>
                 </div>
+                <!--
                 <div class="center-children">
                     <span>Description:</span>
                     <textarea id="DrawingPromptTextField" type="text" class="prompt"></textarea>
                 </div>
+                -->
                 <div class="center-children">
                     <div id="SubmitDrawingButton" class="button column">Submit</div>
                     <div id="ClearDrawingButton" class="button column">Erase</div>
                 </div>
+            </div>
+
+            <!-- Image captioning widget -->
+            <div id="CaptionImageContainer">
+                <div class="center-children" style="margin-top: 1vw; margin-bottom: 1vw;">
+                    <img/>
+                </div>
+                <div class="center-children">
+                    <textarea id="CaptionText" type="text" class="prompt" placeholder="Write your caption here..."></textarea>
+                </div>
+                <div class="center-children">
+                    <button id="SubmitCaptionButton" class="button">Submit</button>
+                </div>
+            </div>
+
+            <!-- Drawing game results widget -->
+            <div id="DrawingGameResultsContainer">
+                <!-- Sample result container -->
+                <!--
+                <div>
+                    <img/>
+                    <div class="center-children">
+                        <span>Prompt.</span>
+                    </div>
+                    <div class="center-children">
+                        <span>Caption.</span>
+                    </div>
+                </div>
+                -->
             </div>
 
             <!-- Prompt entry w/ submit button -->

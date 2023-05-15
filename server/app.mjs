@@ -7,12 +7,12 @@
  *
  * TODO Next:
  * ----------
- * - Depth2img parameters might not match old Python version. Need to double check again.
+ * - Games should specify how many users are required to play. Drawing game cannot drop any users once
+ *   it starts.
  * - Image requests need to be properly serialized because option get requests return immediately and
  *   it is not clear if they are returning the currently-used options or last-set options, so even if
  *   image server is serializing internally, we may have an issue where we fail to set the model
  *   correctly. Need to wait till one request is done before beginning the next.
- * - Transmit movie name and display it above each slideshow and who it features
  * - Fix CSS (centering of candidate images).
  * - Socket reconnect on front-end? Don't remove dead clients until after some timeout here, allowing
  *   them to resume? If we do this, must perform replay. Alternatively, can remove clients immediately
@@ -217,6 +217,12 @@ class Game
         case "copy":                            return this._do_copy(op, clientId);
         case "delete":                          return this._do_delete(op, clientId);
         case "make_map":                        return this._do_make_map(op, clientId);
+        case "random_client_input_output_mapping":
+                                                return this._do_random_client_input_output_mapping(op, clientId);
+        case "remap_keys":                      return this._do_remap_keys(op, clientId);
+        case "get_our_client_id":               return this._do_get_our_client_id(op, clientId);
+        case "invert_map":                      return this._do_invert_map(op, clientId);
+        case "chain_maps":                      return this._do_chain_maps(op, clientId);
         default:
             console.log(`Error: Unknown op: ${op.op}`);
             return false;
@@ -566,7 +572,7 @@ class Game
         const selection = this._expandStateVar(clientId, op.stateVar);
         const selections = this._expandStateVar(clientId, op.selections);
         const selectedValue = selections[selection];
-        this._writeToStateVar(clientId, op.writeToStateVar, selectedValue);
+         this._writeToStateVar(clientId, op.writeToStateVar, selectedValue);
         return true;
     }
 
@@ -607,6 +613,97 @@ class Game
 
         this._writeToStateVar(clientId, op.writeToStateVar, map);
 
+        return true;
+    }
+
+    _do_random_client_input_output_mapping(op, clientId)
+    {
+        // The simplest way to establish a unique mapping is to assign each client (input) to the
+        // *next* client (output), wrapping around for the last one
+        const clientIds = Array.from(this._clientIds);
+        const inOut = {};
+        for (let i = 0; i < clientIds.length; i++)
+        {
+            const inputClient = clientIds[i];
+            const outIdx = (i + 1) % clientIds.length;
+            const outputClient = clientIds[outIdx];
+            inOut[inputClient] = outputClient;
+        }
+
+        this._writeToStateVar(clientId, op.writeToStateVar, inOut);
+        return true;
+    }
+
+    _do_remap_keys(op, clientId)
+    {
+        // Given a map of (key1 -> value), and other map of (key1 -> key2), returns a map of
+        // (key2 -> value). It is up to the user to ensure the mapping is unique.
+        const mapOut = {};
+        const mapIn = this._expandStateVar(clientId, op.stateVar);
+        const newKeyMap = this._expandStateVar(clientId, op.keyMapStateVar);
+        for (const [key1, value] of Object.entries(mapIn))
+        {
+            const key2 = newKeyMap[key1];
+            if (key2)
+            {
+                mapOut[key2] = value;
+            }
+        }
+        this._writeToStateVar(clientId, op.writeToStateVar, mapOut);
+        return true;
+    }
+
+    _do_get_our_client_id(op, clientId)
+    {
+        this._writeToStateVar(clientId, op.writeToStateVar, clientId);
+        return true;
+    }
+
+    _do_invert_map(op, clientId)
+    {
+        // Given a map of (x -> f) produces (f -> x). This requires that there
+        // are no duplicate values.
+        const mapOut = {};
+        const mapIn = this._expandStateVar(clientId, op.stateVar);
+
+        // Validate
+        if (Object.keys(mapIn).length != (new Set(Object.values(mapIn))).size)
+        {
+            console.log(`Error: Cannot safely invert map ${op.stateVar} because mapping of keys to values is not unique: ${mapIn}`);
+        }
+
+        // Invert
+        for (const [key, value] of Object.entries(mapIn))
+        {
+            mapOut[value] = key;
+        }
+
+        this._writeToStateVar(clientId, op.writeToStateVar, mapOut);
+        return true;
+    }
+
+    _do_chain_maps(op, clientId)
+    {
+        // Given maps (key1 -> value1) and (value1 -> value2), produces (key1 -> value2).
+        const mapOut = {};
+        const map1 = this._expandStateVar(clientId, op.keyMapVar);
+        const map2 = this._expandStateVar(clientId, op.valueMapVar);
+
+        // Compose -- or chain -- the two maps
+        for (const [key1, value1] of Object.entries(map1))
+        {
+            if (map2[value1])
+            {
+                const value2 = map2[value1];
+                mapOut[key1] = value2;
+            }
+            else
+            {
+                console.log(`Error: Cannot chain maps ${op.keyMapVar} and ${op.valueMapVar} because the latter lacks a required key: ${value1}`);
+            }
+        }
+
+        this._writeToStateVar(clientId, op.writeToStateVar, mapOut);
         return true;
     }
 

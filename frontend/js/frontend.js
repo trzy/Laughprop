@@ -276,10 +276,13 @@ const _instructions = $("#Instructions");
 const _returnToLobbyButton = $("#ReturnToLobbyButton");
 
 const _canvasContainer = $("#CanvasContainer");
-const _drawingPromptTextField = $("#DrawingPromptTextField");
 const _submitDrawingButton = $("#CanvasContainer #SubmitDrawingButton");
 const _clearDrawingButton = $("#CanvasContainer #ClearDrawingButton");
 const _canvas = new Canvas();
+
+const _captionImageContainer = $("#CaptionImageContainer");
+const _submitCaptionButton = $("#CaptionImageContainer #SubmitCaptionButton");
+const _captionTextField = $("#CaptionImageContainer #CaptionText");
 
 const _promptContainer = $("#PromptContainer");
 const _promptDescription = $("#PromptDescription");
@@ -348,7 +351,7 @@ const _voteMovieButton = $("#Slideshows #VoteMovieButton");
 let _slideshows = [];
 let _slideshowTimer = null;
 
-const _containers = [ _gameTitleContainer, _instructionsContainer, _canvasContainer, _promptContainer, _carouselContainer, _candidatesContainer, _winningImagesContainer, _multiSelectMultiPromptContainer, _slideshowsContainer ];
+const _containers = [ _gameTitleContainer, _instructionsContainer, _canvasContainer, _captionImageContainer, _promptContainer, _carouselContainer, _candidatesContainer, _winningImagesContainer, _multiSelectMultiPromptContainer, _slideshowsContainer ];
 
 function onImageThumbnailClicked(idx)
 {
@@ -858,23 +861,9 @@ function onClientUIMessage(msg)
             _submitDrawingButton.off("click").click(function()
             {
                 let imageData = _canvas.getBase64ImageData();
-                const msg = new ClientInputMessage({ "@@user_drawing": imageData, "@@prompt": _drawingPromptTextField.val() });
+                const msg = new ClientInputMessage({ "@@user_drawing": imageData });
                 sendMessage(msg);
             });
-
-            // Submit button enabled only when prompt is filled out
-            _drawingPromptTextField.val("").off("input").on("input", function(e)
-            {
-                if (_drawingPromptTextField.val().length > 0)
-                {
-                    _submitDrawingButton.removeClass("button-disabled");
-                }
-                else
-                {
-                    _submitDrawingButton.addClass("button-disabled");
-                }
-            });
-            _submitDrawingButton.addClass("button-disabled");
 
             _canvasContainer.show();
         }
@@ -884,6 +873,38 @@ function onClientUIMessage(msg)
         }
         break;
     }
+
+//TODO: make sure something is written in caption field in order to submit because otherwise we lose the key and the map breaks
+    case "caption_image_widget":
+    {
+        if (msg.command.param)
+        {
+            const uuid = msg.command.param;
+            const image = _imageByUuid[uuid];
+            if (image)
+            {
+                const img = $(_captionImageContainer).find("img");
+                img.attr("src", "data:image/jpeg;base64," + image);
+            }
+            _captionImageContainer.show();
+
+            _submitCaptionButton.off("click").click(() =>
+            {
+                let caption = _captionTextField.val();
+                const msg = new ClientInputMessage({ "@@caption": caption });
+                sendMessage(msg);
+            });
+        }
+        else
+        {
+            _captionImageContainer.hide();
+        }
+        break;
+    }
+
+    case "drawing_game_results_widget":
+        //TODO!
+        break;
     }
 }
 
