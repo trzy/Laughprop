@@ -284,6 +284,8 @@ const _captionImageContainer = $("#CaptionImageContainer");
 const _submitCaptionButton = $("#CaptionImageContainer #SubmitCaptionButton");
 const _captionTextField = $("#CaptionImageContainer #CaptionText");
 
+const _drawingGameResultsContainer = $("#DrawingGameResultsContainer");
+
 const _promptContainer = $("#PromptContainer");
 const _promptDescription = $("#PromptDescription");
 const _promptTextField = $("#PromptTextField");
@@ -351,7 +353,7 @@ const _voteMovieButton = $("#Slideshows #VoteMovieButton");
 let _slideshows = [];
 let _slideshowTimer = null;
 
-const _containers = [ _gameTitleContainer, _instructionsContainer, _canvasContainer, _captionImageContainer, _promptContainer, _carouselContainer, _candidatesContainer, _winningImagesContainer, _multiSelectMultiPromptContainer, _slideshowsContainer ];
+const _containers = [ _gameTitleContainer, _instructionsContainer, _canvasContainer, _captionImageContainer, _drawingGameResultsContainer, _promptContainer, _carouselContainer, _candidatesContainer, _winningImagesContainer, _multiSelectMultiPromptContainer, _slideshowsContainer ];
 
 function onImageThumbnailClicked(idx)
 {
@@ -576,6 +578,51 @@ function updateSlideshow()
     }
 }
 
+function buildDrawingGameResultsWidget(caption_by_image_id, prompt_by_image_id)
+{
+    _drawingGameResultsContainer.empty();
+
+    const imageIds = new Set(Object.keys(caption_by_image_id));
+    for (const uuid of imageIds)
+    {
+        const prompt = prompt_by_image_id[uuid];
+        const caption = caption_by_image_id[uuid];
+        const image = _imageByUuid[uuid];
+
+        /*
+         * <div>
+         *     <div class="center-children">
+         *         <img/>
+         *     </div>
+         *     <div class="center-children">
+         *         <span>Prompt.</span>
+         *     </div>
+         *     <div class="center-children">
+         *         <span>Caption.</span>
+         *     </div>
+         * </div>
+         */
+        const container = $("<div>");
+        _drawingGameResultsContainer.append(container);
+
+        const alignmentDiv1 = $("<div>").addClass("center-children");
+        const img = $("<img>");
+        img.get(0).src = "data:image/jpeg;base64," + image;
+        alignmentDiv1.append(img);
+        container.append(alignmentDiv1);
+
+        const alignmentDiv2 = $("<div>").addClass("center-children");
+        const span1 = $("<span>").html("<b>Original:</b>" + prompt);
+        alignmentDiv2.append(span1);
+        container.append(alignmentDiv2);
+
+        const alignmentDiv3 = $("<div>").addClass("center-children");
+        const span2 = $("<span>").html("<b>Captioned:</b>" + caption);
+        alignmentDiv3.append(span2);
+        container.append(alignmentDiv3);
+    }
+}
+
 function onClientUIMessage(msg)
 {
     switch (msg.command.command)
@@ -647,6 +694,20 @@ function onClientUIMessage(msg)
                 const msg = new ClientInputMessage({ "@@prompt": _promptTextField.val() });
                 sendMessage(msg);
             });
+
+            // Submit button only enabled when there is prompt text
+            _promptTextField.off("input").on("input", e =>
+            {
+                if (_promptTextField.val().length > 0)
+                {
+                    _promptSubmitButton.removeClass("button-disabled");
+                }
+                else
+                {
+                    _promptSubmitButton.addClass("button-disabled");
+                }
+            });
+            _promptSubmitButton.addClass("button-disabled");
         }
         else
         {
@@ -874,7 +935,6 @@ function onClientUIMessage(msg)
         break;
     }
 
-//TODO: make sure something is written in caption field in order to submit because otherwise we lose the key and the map breaks
     case "caption_image_widget":
     {
         if (msg.command.param)
@@ -894,6 +954,23 @@ function onClientUIMessage(msg)
                 const msg = new ClientInputMessage({ "@@caption": caption });
                 sendMessage(msg);
             });
+
+            // Clear out old caption data
+            _captionTextField.val("");
+
+            // Submit button only enabled when there is caption text (required, otherwise backend breaks)
+            _captionTextField.off("input").on("input", e =>
+            {
+                if (_captionTextField.val().length > 0)
+                {
+                    _submitCaptionButton.removeClass("button-disabled");
+                }
+                else
+                {
+                    _submitCaptionButton.addClass("button-disabled");
+                }
+            });
+            _submitCaptionButton.addClass("button-disabled");
         }
         else
         {
@@ -903,8 +980,21 @@ function onClientUIMessage(msg)
     }
 
     case "drawing_game_results_widget":
-        //TODO!
+    {
+        if (msg.command.param)
+        {
+            const caption_by_image_id = msg.command.param.caption_by_image_id;
+            const prompt_by_image_id = msg.command.param.prompt_by_image_id;
+            buildDrawingGameResultsWidget(caption_by_image_id, prompt_by_image_id);
+            _drawingGameResultsContainer.show();
+            _returnToLobbyButton.show();
+        }
+        else
+        {
+            _drawingGameResultsContainer.hide();
+        }
         break;
+    }
     }
 }
 
