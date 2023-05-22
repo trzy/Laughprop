@@ -1093,7 +1093,8 @@ function continueTxt2ImgRequest(clientId, prompt, session, destStateVar)
     {
         // Use placeholder images
         const imageByUuid = {};
-        for (let i = 0; i < payload["batch_size"]; i++)
+        const numImagesExpected = payload["batch_size"] * payload["n_iter"];
+        for (let i = 0; i < numImagesExpected; i++)
         {
             imageByUuid[crypto.randomUUID()] = randomChoice(_placeholderImages);
         }
@@ -1249,7 +1250,8 @@ function continueDepth2ImgRequest(clientId, params, session, destStateVar)
     {
         // Use placeholder images
         const imageByUuid = {};
-        for (let i = 0; i < payload["batch_size"]; i++)
+        const numImagesExpected = payload["batch_size"] * payload["n_iter"];
+        for (let i = 0; i < numImagesExpected; i++)
         {
             imageByUuid[crypto.randomUUID()] = randomChoice(_placeholderImages);
         }
@@ -1422,7 +1424,8 @@ function continueSketch2ImgRequest(clientId, prompt, inputImageBase64, session, 
     {
         // Use placeholder images
         const imageByUuid = {};
-        for (let i = 0; i < payload["batch_size"]; i++)
+        const numImagesExpected = payload["batch_size"] * payload["n_iter"];
+        for (let i = 0; i < numImagesExpected; i++)
         {
             imageByUuid[crypto.randomUUID()] = randomChoice(_placeholderImages);
         }
