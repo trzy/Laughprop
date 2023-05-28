@@ -14,6 +14,56 @@ import http from "http";
 import fs from "fs";
 import { randomChoice } from "./utils.mjs";
 
+class Txt2ImgParams
+{
+    clientId;
+    session;
+    prompt;
+    destStateVar;
+
+    constructor(clientId, session, prompt, destStateVar)
+    {
+        this.clientId = clientId;
+        this.session = session;
+        this.prompt = prompt;
+        this.destStateVar = destStateVar;
+    }
+}
+
+class Depth2ImgParams
+{
+    clientId;
+    session;
+    params;
+    destStateVar;
+
+    constructor(clientId, session, params, destStateVar)
+    {
+        this.clientId = clientId;
+        this.session = session;
+        this.params = params;
+        this.destStateVar = destStateVar;
+    }
+}
+
+class Sketch2ImgParams
+{
+    clientId;
+    session;
+    prompt;
+    inputImageBase64;
+    destStateVar;
+
+    constructor(clientId, session, prompt, inputImageBase64, destStateVar)
+    {
+        this.clientId = clientId;
+        this.session = session;
+        this.prompt = prompt;
+        this.inputImageBase64 = inputImageBase64;
+        this.destStateVar = destStateVar;
+    }
+}
+
 class ImageGenerator
 {
     _sessionById;   // reference to sessions table (session indexed by session ID)
@@ -25,6 +75,53 @@ class ImageGenerator
     };
     _placeholderImages = [];
     _inputImageByAssetPath = {};
+
+    // Request queue. Only one request at a time for now (eventually one per server).
+    _imageRequestsPending = [];
+    _imageRequestInProgress = false;
+
+
+    makeTxt2ImgRequest(clientId, prompt, destStateVar)
+    {
+        const session = this._tryGetSessionByClientId(clientId);
+        if (!session)
+        {
+            console.log(`Error: Dropping txt2img request because no session exists for clientId=${clientId}`);
+            return;
+        }
+
+        const imageRequest = new Txt2ImgParams(clientId, session, prompt, destStateVar);
+        this._imageRequestsPending.push(imageRequest);
+        this._tryProcessNextRequest();
+    }
+
+    makeDepth2ImgRequest(clientId, params, destStateVar)
+    {
+        const session = this._tryGetSessionByClientId(clientId);
+        if (!session)
+        {
+            console.log(`Error: Dropping depth2img request because no session exists for clientId=${clientId}`);
+            return;
+        }
+
+        const imageRequest = new Depth2ImgParams(clientId, session, params, destStateVar);
+        this._imageRequestsPending.push(imageRequest);
+        this._tryProcessNextRequest();
+    }
+
+    makeSketch2ImgRequest(clientId, prompt, inputImageBase64, destStateVar)
+    {
+        const session = this._tryGetSessionByClientId(clientId);
+        if (!session)
+        {
+            console.log(`Error: Dropping sketch2img request because no session exists for clientId=${clientId}`);
+            return;
+        }
+
+        const imageRequest = new Sketch2ImgParams(clientId, session, prompt, inputImageBase64, destStateVar);
+        this._imageRequestsPending.push(imageRequest);
+        this._tryProcessNextRequest();
+    }
 
     _tryGetSessionByClientId(clientId)
     {
@@ -105,14 +202,9 @@ class ImageGenerator
         request.end();
     }
 
-    makeTxt2ImgRequest(clientId, prompt, destStateVar)
+    _processTxt2ImgRequest(imageRequest)
     {
-        const session = this._tryGetSessionByClientId(clientId);
-        if (!session)
-        {
-            console.log(`Error: Dropping image response because no session for clientId=${clientId}`);
-            return;
-        }
+        this._imageRequestInProgress = true;
 
         const self = this;
 
@@ -123,13 +215,18 @@ class ImageGenerator
             {
                 self._setImageModel(self._imageServerParams.txt2ImgModel);
             }
-            self._continueTxt2ImgRequest(clientId, prompt, session, destStateVar);
+            self._continueTxt2ImgRequest(imageRequest);
         });
     }
 
-    _continueTxt2ImgRequest(clientId, prompt, session, destStateVar)
+    _continueTxt2ImgRequest(imageRequest)
     {
         const self = this;
+
+        const clientId = imageRequest.clientId;
+        const session = imageRequest.session;
+        const prompt = imageRequest.prompt;
+        const destStateVar = imageRequest.destStateVar;
 
         // Defaults
         const payload = {
@@ -242,6 +339,11 @@ class ImageGenerator
                     console.log("Error: Unable to parse response from image server");
                     dummyResponse();
                 }
+                finally
+                {
+                    self._imageRequestInProgress = false;
+                    setTimeout(() => self._tryProcessNextRequest(), 0);
+                }
             });
         }
 
@@ -256,14 +358,9 @@ class ImageGenerator
         request.end();
     }
 
-    makeDepth2ImgRequest(clientId, params, destStateVar)
+    _processDepth2ImgRequest(imageRequest)
     {
-        const session = this._tryGetSessionByClientId(clientId);
-        if (!session)
-        {
-            console.log(`Error: Dropping image response because no session for clientId=${clientId}`);
-            return;
-        }
+        this._imageRequestInProgress = true;
 
         const self = this;
 
@@ -274,13 +371,18 @@ class ImageGenerator
             {
                 self._setImageModel(self._imageServerParams.depth2ImgModel);
             }
-            self._continueDepth2ImgRequest(clientId, params, session, destStateVar);
+            self._continueDepth2ImgRequest(imageRequest);
         });
     }
 
-    _continueDepth2ImgRequest(clientId, params, session, destStateVar)
+    _continueDepth2ImgRequest(imageRequest)
     {
         const self = this;
+
+        const clientId = imageRequest.clientId;
+        const session = imageRequest.session;
+        const params = imageRequest.params;
+        const destStateVar = imageRequest.destStateVar;
 
         // Defaults
         const payload = {
@@ -403,6 +505,11 @@ class ImageGenerator
                     console.log("Error: Unable to parse response from image server");
                     dummyResponse();
                 }
+                finally
+                {
+                    self._imageRequestInProgress = false;
+                    setTimeout(() => self._tryProcessNextRequest(), 0);
+                }
             });
         }
 
@@ -417,14 +524,9 @@ class ImageGenerator
         request.end();
     }
 
-    makeSketch2ImgRequest(clientId, prompt, inputImageBase64, destStateVar)
+    _processSketch2ImgRequest(imageRequest)
     {
-        const session = this._tryGetSessionByClientId(clientId);
-        if (!session)
-        {
-            console.log(`Error: Dropping image response because no session for clientId=${clientId}`);
-            return;
-        }
+        this._imageRequestInProgress = true;
 
         const self = this;
 
@@ -435,14 +537,20 @@ class ImageGenerator
             {
                 self._setImageModel(self._imageServerParams.txt2ImgModel);
             }
-            self._continueSketch2ImgRequest(clientId, prompt, inputImageBase64, session, destStateVar);
+            self._continueSketch2ImgRequest(imageRequest);
         });
     }
 
     // Sketch2img is text2img/img2img plus ControlNet scribble mode
-    _continueSketch2ImgRequest(clientId, prompt, inputImageBase64, session, destStateVar)
+    _continueSketch2ImgRequest(imageRequest)
     {
         const self = this;
+
+        const clientId = imageRequest.clientId;
+        const session = imageRequest.session;
+        const prompt = imageRequest.prompt;
+        const inputImageBase64 = imageRequest.inputImageBase64;
+        const destStateVar = imageRequest.destStateVar;
 
         // Defaults
         const payload = {
@@ -580,6 +688,11 @@ class ImageGenerator
                     console.log("Error: Unable to parse response from image server");
                     dummyResponse();
                 }
+                finally
+                {
+                    self._imageRequestInProgress = false;
+                    setTimeout(() => self._tryProcessNextRequest(), 0);
+                }
             });
         }
 
@@ -592,6 +705,33 @@ class ImageGenerator
         });
         request.write(JSON.stringify(payload));
         request.end();
+    }
+
+    _tryProcessNextRequest()
+    {
+        if (this._imageRequestInProgress || this._imageRequestsPending.length <= 0)
+        {
+            return;
+        }
+
+        const imageRequest = this._imageRequestsPending.shift();
+
+        if (imageRequest instanceof Txt2ImgParams)
+        {
+            this._processTxt2ImgRequest(imageRequest);
+        }
+        else if (imageRequest instanceof Depth2ImgParams)
+        {
+            this._processDepth2ImgRequest(imageRequest);
+        }
+        else if (imageRequest instanceof Sketch2ImgParams)
+        {
+            this._processSketch2ImgRequest(imageRequest);
+        }
+        else
+        {
+            console.log(`Error: Ignoring unknown image request object`);
+        }
     }
 
     _loadRequiredImageAssets()
