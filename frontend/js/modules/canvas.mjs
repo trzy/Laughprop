@@ -28,7 +28,7 @@ class Canvas
         let x = elementX * (canvasWidth / elementWidth);
         let y = elementY * (canvasHeight / elementHeight);
 
-        console.log(x, y, elementX, elementY);
+        //console.log(x, y, elementX, elementY);
 
         // New point
         this._ctx.fillStyle = "#000";
@@ -90,7 +90,7 @@ class Canvas
         let x = touch.pageX - rect.left;
         let y = touch.pageY - rect.top;
 
-        console.log($`Touch Move: pageX=${touch.pageX}, pageY=${touch.pageY}`);
+        //console.log($`Touch Move: pageX=${touch.pageX}, pageY=${touch.pageY}`);
 
         this._onMouseMove({ offsetX: x, offsetY: y });
     }
