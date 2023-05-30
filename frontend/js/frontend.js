@@ -34,7 +34,7 @@ var _clientId = generateUuid();
 function connectToBackend()
 {
     let location = window.location;
-    let wsUrl = "ws://" + location.hostname + ":" + location.port;
+    let wsUrl = "wss://" + location.hostname + ":" + location.port;
 
     console.log(`Connecting to backend socket: ${wsUrl}`)
     _socket = new WebSocket(wsUrl);
