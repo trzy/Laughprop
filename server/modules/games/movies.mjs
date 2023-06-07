@@ -23,7 +23,10 @@ const script = [
                     command:    "multi_select_multi_prompt_widget",
                     param:      {
                         "Bloodsport":       [ "Frank Dux (Jean-Claude Van Damme)", "Chong Li (Bolo Yeung)" ],
-                        "Step Brothers":    [ "Brennan (Will Ferrell)", "Dale (John C. Reilly)" ]
+                        "Step Brothers":    [ "Brennan (Will Ferrell)", "Dale (John C. Reilly)" ],
+                        "The Hangover":     [ "Phil (Bradley Cooper)", "Stu (Ed Helms)", "Doug (Justin Bartha)", "Alan (Zach Galifianakis)" ],
+                        "Star Wars":        [ "Luke Skywalker (Mark Hamill)", "Princess Leia (Carrie Fisher)", "Han Solo (Harrison Ford)", "Obi Wan Kenobi (Alec Guinness)" ],
+                        "Lethal Weapon":    [ "Martin Riggs (Mel Gibson)", "Roger Murtaugh (Danny Glover)" ]
                     }
                 }
             },
@@ -41,7 +44,10 @@ const script = [
                 writeToStateVar: "@@depth2img_command_scene1",
                 selections: {
                     "Bloodsport":       { image: "Bloodsport/Bloodsport_1_FrankDux.jpg", prompt: "{@@prompt_0} wearing a white gi with a japanese garden in the background. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster" },
-                    "Step Brothers":    { image: "StepBrothers/StepBrothers_1_Rules.jpg", prompt: "{@@prompt_1} wearing a red shirt, pointing finger in accusation in a suburban den. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster, bad hands" }
+                    "Step Brothers":    { image: "StepBrothers/StepBrothers_1_Rules.jpg", prompt: "{@@prompt_1} wearing a red shirt, pointing finger in accusation in a suburban den. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster, bad hands" },
+                    "The Hangover":     { image: "Hangover/Hangover_1_Call.jpg", prompt: "{@@prompt_0} with slightly bruised face listening to a cell phone while wearing aviator sun glasses and a worried expression on his face. Background is the Nevada desert. Cinematic shot. Canon 5d", negativePrompt: "grotesque, distorted face, monster, headphones" },
+                    "Star Wars":        { image: "StarWars/StarWars_1_Leia.jpg", prompt: "{@@prompt_1} with a Princess Leia wig and white gown, holding a Star Wars blaster with a red glow emanating from the right side of the background. Cinematic shot. Canon 5d.", negativePrompt: "grotesque, distorted face, suit" },
+                    "Lethal Weapon":    { image: "LethalWeapon/LethalWeapon_1_Portrait.jpg", prompt: "{@@prompt_0} and {@@prompt_1} in Lethal Weapon. Cinematic shot. Canon 5d", negativePrompt: "grotesque, distorted face" }
                 }
             },
             {
@@ -51,7 +57,10 @@ const script = [
                 writeToStateVar: "@@depth2img_command_scene2",
                 selections: {
                     "Bloodsport":       { image: "Bloodsport/Bloodsport_2_ChongLi.jpg", prompt: "muscular {@@prompt_1} in a headband pointing. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster" },
-                    "Step Brothers":    { image: "StepBrothers/StepBrothers_2_Drums.jpg", prompt: "{@@prompt_0} wearing a turquoise shirt fumbling with zipper and standing behind a drum set in a suburban bedroom. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster" }
+                    "Step Brothers":    { image: "StepBrothers/StepBrothers_2_Drums.jpg", prompt: "{@@prompt_0} wearing a turquoise shirt fumbling with zipper and standing behind a drum set in a suburban bedroom. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster" },
+                    "The Hangover":     { image: "Hangover/Hangover_2_Baby.jpg", prompt: "{@@prompt_3} with a gray t-shirt, aviator sunglasses, wearing a baby bjorn and a baby in it, leaning over in an elevator.", negativePrompt: "grotesque, distorted face, monster" },
+                    "Star Wars":        { image: "StarWars/StarWars_2_Han.jpg", prompt: "{@@prompt_2} in white storm trooper armor standing next to Chewbacca in the death star. cinematic shot. canon 5d", negativePrompt: "grotesque, distorted face" },
+                    "Lethal Weapon":    { image: "LethalWeapon/LethalWeapon_2_Range.jpg", prompt: "{@@prompt_0} and {@@prompt_1} at the police shooting range, both wearing hearing protection. Cinematic shot. Canon 5d", negativePrompt: "grotesque, distorted face" }
                 }
             },
             {
@@ -61,7 +70,10 @@ const script = [
                 writeToStateVar: "@@depth2img_command_scene3",
                 selections: {
                     "Bloodsport":       { image: "Bloodsport/Bloodsport_3_Splits.jpg", prompt: "muscular {@@prompt_0} meditating and performing the splits. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster" },
-                    "Step Brothers":    { image: "StepBrothers/StepBrothers_3_Fight.jpg", prompt: "{@@prompt_1} wearing a red shirt, raising fist with an enraged facial expression, in the front yard of a suburban house. daytime. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster, bad hands" }
+                    "Step Brothers":    { image: "StepBrothers/StepBrothers_3_Fight.jpg", prompt: "{@@prompt_1} wearing a red shirt, raising fist with an enraged facial expression, in the front yard of a suburban house. daytime. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster, bad hands" },
+                    "The Hangover":     { image: "Hangover/Hangover_3_Tooth.jpg", prompt: "Hungover {@@prompt_1} wearing glasses grinning with a bloodied mouth and tooth knocked out looking in the mirror with a terrified and hilarious expression on his face.", negativePrompt: "grotesque, distorted face, monster, perfect teeth" },
+                    "Star Wars":        { image: "StarWars/StarWars_3_Obi.jpg", prompt: "Close up of {@@prompt_3} with a wild-eyed expression dressed like Obi Wan wielding a blue lightsaber with Darth Vader looming behind him, in a hallway on the Death Star. Cinematic shot. Canon 5d", negativePrompt: "grotesque, distorted face, big head, large hood" },
+                    "Lethal Weapon":    { image: "LethalWeapon/LethalWeapon_3_Bomb.jpg", prompt: "Frightened {@@prompt_1} sitting on a toilet. {@@prompt_0} on the left checking in. Cinematic shot. Canon 5d", negativePrompt: "grotesque, distorted face, beard" }
                 }
             },
             {
@@ -71,7 +83,10 @@ const script = [
                 writeToStateVar: "@@depth2img_command_scene4",
                 selections: {
                     "Bloodsport":       { image: "Bloodsport/Bloodsport_4_KO.jpg", prompt: "muscular {@@prompt_0} delivers a knockout blow to {@@prompt_1}. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster" },
-                    "Step Brothers":    { image: "StepBrothers/StepBrothers_4_Portrait.jpg", prompt: "80s style studio family portrait of {@@prompt_0} and {@@prompt_1} staring wistfully at the camera. Dressed in preppy attire. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster, bad hands" }
+                    "Step Brothers":    { image: "StepBrothers/StepBrothers_4_Portrait.jpg", prompt: "80s style studio family portrait of {@@prompt_0} and {@@prompt_1} staring wistfully at the camera. Dressed in preppy attire. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster, bad hands" },
+                    "The Hangover":     { image: "Hangover/Hangover_4_Rooftop.jpg", prompt: "Severely sunburned skin disheveled {@@prompt_2} wearing a dirty white unbuttoned shirt screaming while standing on a casino rooftop in the daytime. Cinematic shot. Canon 5d", negativePrompt: "grotesque, distorted face, monster, headphones, normal complexion, clean, clean shirt" },
+                    "Star Wars":        { image: "StarWars/StarWars_4_Luke.jpg", prompt: "{@@prompt_0} in the cockpit of an X-Wing fighter with an orange visor and a serious expression on face. Cinematic shot. Canon 5d", negativePrompt: "grotesque, distorted face" },
+                    "Lethal Weapon":    { image: "LethalWeapon/LethalWeapon_4_Guns.jpg", prompt: "{@@prompt_0} and {@@prompt_1} in Lethal Weapon. Cinematic shot. Canon 5d", negativePrompt: "grotesque, distorted face" }
                 }
             },
 
