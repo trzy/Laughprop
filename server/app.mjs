@@ -372,7 +372,7 @@ const server = app.listen(port, () =>
 const wsServer = new WebSocketServer({ server: server });
 wsServer.on('connection', socket =>
 {
-    let interval = setInterval(() => socket.ping(), 5);
+    let interval = setInterval(() => socket.ping(), 5e3);
     socket.on('message', function(buffer) { onMessageReceived(socket, buffer) });
     socket.onclose = function(event)
     {
