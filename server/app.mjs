@@ -372,9 +372,11 @@ const server = app.listen(port, () =>
 const wsServer = new WebSocketServer({ server: server });
 wsServer.on('connection', socket =>
 {
+    let interval = setInterval(() => socket.ping(), 5);
     socket.on('message', function(buffer) { onMessageReceived(socket, buffer) });
     socket.onclose = function(event)
     {
+        clearInterval(interval);
         if (event.wasClean)
         {
             console.log(`Connection closed (code=${event.code}, reason=${event.reason})`);
