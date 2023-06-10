@@ -3,10 +3,6 @@
  * Bart Trzynadlowski, 2023
  *
  * Handles image generation requests.
- *
- * TODO:
- * -----
- * - Multiple server support.
  */
 
 import crypto from "crypto";
@@ -721,7 +717,7 @@ class ImageGenerator
     {
         // Sort image servers in ascending order of queue size
         const imageServers = this._imageServers.slice();
-        imageServers.sort((a, b) => a.imageRequestInProgress.length - b.imageRequestsInProgress.length);
+        imageServers.sort((a, b) => a.imageRequestsPending.length - b.imageRequestsPending.length);
 
         // Find the first server that has not yet been attempted for this image request
         for (const imageServer of imageServers)
