@@ -200,6 +200,7 @@ class ImageGenerator
                 catch (error)
                 {
                     console.log("Error: Unable to parse image server options");
+                    console.log(error);
                     onOptions({});
                 }
             });
@@ -363,6 +364,7 @@ class ImageGenerator
                 catch (error)
                 {
                     console.log(`Error: Unable to parse response from image server ${imageRequest.imageServer.host}:${imageRequest.imageServer.port}`);
+                    console.log(error);
                     self._dispatchImageRequestToServer(imageRequest);
                 }
                 finally
@@ -518,6 +520,7 @@ class ImageGenerator
                 catch (error)
                 {
                     console.log(`Error: Unable to parse response from image server ${imageRequest.imageServer.host}:${imageRequest.imageServer.port}`);
+                    console.log(error);
                     self._dispatchImageRequestToServer(imageRequest);
                 }
                 finally
@@ -691,6 +694,7 @@ class ImageGenerator
                 catch (error)
                 {
                     console.log(`Error: Unable to parse response from image server ${imageRequest.imageServer.host}:${imageRequest.imageServer.port}`);
+                    console.log(error);
                     self._dispatchImageRequestToServer(imageRequest);
                 }
                 finally
@@ -728,7 +732,7 @@ class ImageGenerator
                 imageRequest.imageServer = imageServer;
                 imageRequest.imageServersAttempted.add(imageServer);
                 imageServer.imageRequestsPending.push(imageRequest);
-                console.log(`Dispatched reqest to: ${imageServer.host}:${imageServer.port}`);
+                console.log(`Dispatched request to: ${imageServer.host}:${imageServer.port}`);
                 return;
             }
         }
@@ -747,6 +751,7 @@ class ImageGenerator
 
     _tryProcessNextRequest()
     {
+        console.log("Processing next image requests");
         for (const imageServer of this._imageServers)
         {
             if (imageServer.imageRequestInProgress || imageServer.imageRequestsPending.length <= 0)
