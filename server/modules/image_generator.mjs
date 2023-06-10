@@ -756,7 +756,7 @@ class ImageGenerator
         {
             if (imageServer.imageRequestInProgress || imageServer.imageRequestsPending.length <= 0)
             {
-                return;
+                continue;
             }
 
             const imageRequest = imageServer.imageRequestsPending.shift();
