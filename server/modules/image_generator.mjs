@@ -68,7 +68,7 @@ class ImageGenerator
 {
     _sessionById;   // reference to sessions table (session indexed by session ID)
     _imageServerParams = {
-        host: "127.0.0.1",
+        host: "127.0.0.1",  // local by default, otherwise will be set in constructor
         port: 7860,
         txt2ImgModel: "v1-5-pruned-emaonly.safetensors",
         depth2ImgModel: "512-depth-ema.ckpt"
@@ -443,8 +443,8 @@ class ImageGenerator
 
         // Post request
         const urlParams = {
-            host: "127.0.0.1",
-            port: 7860,
+            host: this._imageServerParams.host,
+            port: this._imageServerParams.port,
             path: "/sdapi/v1/img2img",
             method: "POST",
             headers: { "Content-Type": "application/json" }
@@ -746,8 +746,14 @@ class ImageGenerator
         }
     }
 
-    constructor(sessionById)
+    constructor(sessionById, useLocalImageServer)
     {
+        if (!useLocalImageServer)
+        {
+            this._imageServerParams.host = "ai.steph.ng";
+            this._imageServerParams.port = 80;
+        }
+        console.log(`Image server: ${this._imageServerParams.host}:${this._imageServerParams.port}`);
         this._sessionById = sessionById;
         this._loadRequiredImageAssets();
     }

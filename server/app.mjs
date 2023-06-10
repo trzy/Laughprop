@@ -349,15 +349,47 @@ function onClientInputMessage(socket, msg)
 
 
 /**************************************************************************************************
- Image Generation Requests
+ Command Line Parameters
 **************************************************************************************************/
 
-const _imageGenerator = new ImageGenerator(_sessionById);
+class Options
+{
+    useLocalImageServer = false;
+}
+
+function processCommandLine()
+{
+    const options = new Options();
+
+    for (let i = 2; i < process.argv.length; i++)
+    {
+        if (process.argv[i] == "-h" || process.argv[i] == "-?" || process.argv[i] == "--help" || process.argv[i] == "-help")
+        {
+            console.log("laughprop server");
+            console.log("usage: node app.mjs [options]");
+            console.log("options:");
+            console.log("  --help, -help, -?, -h   Print this help text.");
+            console.log("  --local                 Use local image server.");
+            process.exit();
+        }
+        else if (process.argv[i] == "--local")
+        {
+            options.useLocalImageServer = true;
+        }
+    }
+
+    return options;
+}
 
 
 /**************************************************************************************************
  Program Entry Point
 **************************************************************************************************/
+
+const options = processCommandLine();
+
+// Image generation handler
+const _imageGenerator = new ImageGenerator(_sessionById, options.useLocalImageServer);
 
 // Web server
 const port = 8080;
