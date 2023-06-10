@@ -14,71 +14,111 @@ import http from "http";
 import fs from "fs";
 import { randomChoice } from "./utils.mjs";
 
-class Txt2ImgParams
+class Txt2ImgRequest
 {
+    // Common to all request objects
     clientId;
     session;
-    prompt;
     destStateVar;
+    batchSize = 4;
+    numIterations = 1;
+
+    // Server dispatch tracking
+    imageServer;                        // image server currently being used for this request
+    imageServersAttempted = new Set();  // attempted image servers (by ImageServer class) not to re-try again
+
+    // Txt2img
+    prompt;
 
     constructor(clientId, session, prompt, destStateVar)
     {
         this.clientId = clientId;
         this.session = session;
+
         this.prompt = prompt;
         this.destStateVar = destStateVar;
     }
 }
 
-class Depth2ImgParams
+class Depth2ImgRequest
 {
+    // Common to all request objects
     clientId;
     session;
-    params;
     destStateVar;
+    batchSize = 1;
+    numIterations = 4;  // generate 4 images sequentially, which seems to yield more diverse results (https://github.com/CompVis/stable-diffusion/issues/218)
+
+    // Server dispatch tracking
+    imageServer;                        // image server currently being used for this request
+    imageServersAttempted = new Set();  // attempted image servers (by ImageServer class) not to re-try again
+
+    // Depth2Img
+    params;
 
     constructor(clientId, session, params, destStateVar)
     {
         this.clientId = clientId;
         this.session = session;
+
         this.params = params;
         this.destStateVar = destStateVar;
     }
 }
 
-class Sketch2ImgParams
+class Sketch2ImgRequest
 {
+    // Common to all request objects
     clientId;
     session;
+    destStateVar;
+    batchSize = 4;
+    numIterations = 1;
+
+    // Server dispatch tracking
+    imageServer;                        // image server currently being used for this request
+    imageServersAttempted = new Set();  // attempted image servers (by ImageServer class) not to re-try again
+
+    // Sketch2Img
     prompt;
     inputImageBase64;
-    destStateVar;
 
     constructor(clientId, session, prompt, inputImageBase64, destStateVar)
     {
         this.clientId = clientId;
         this.session = session;
+
         this.prompt = prompt;
         this.inputImageBase64 = inputImageBase64;
         this.destStateVar = destStateVar;
     }
 }
 
+class ImageServer
+{
+    host;
+    port;
+    imageRequestsPending = [];
+    imageRequestInProgress = false;
+
+    constructor(host, port)
+    {
+        this.host = host;
+        this.port = port;
+    }
+}
+
 class ImageGenerator
 {
     _sessionById;   // reference to sessions table (session indexed by session ID)
-    _imageServerParams = {
-        host: "127.0.0.1",  // local by default, otherwise will be set in constructor
-        port: 7860,
-        txt2ImgModel: "v1-5-pruned-emaonly.safetensors",
-        depth2ImgModel: "512-depth-ema.ckpt"
-    };
+
     _placeholderImages = [];
     _inputImageByAssetPath = {};
 
-    // Request queue. Only one request at a time for now (eventually one per server).
-    _imageRequestsPending = [];
-    _imageRequestInProgress = false;
+    // Image servers (by default only a single local server)
+    _imageServers = [ new ImageServer("127.0.0.1", 7860) ];
+    _txtImgModel = "v1-5-pruned-emaonly.safetensors";
+    _depth2ImgModel = "512-depth-ema.ckpt";
 
 
     makeTxt2ImgRequest(clientId, prompt, destStateVar)
@@ -90,8 +130,9 @@ class ImageGenerator
             return;
         }
 
-        const imageRequest = new Txt2ImgParams(clientId, session, prompt, destStateVar);
-        this._imageRequestsPending.push(imageRequest);
+        // Initial request attempt
+        const imageRequest = new Txt2ImgRequest(clientId, session, prompt, destStateVar);
+        this._dispatchImageRequestToServer(imageRequest);
         this._tryProcessNextRequest();
     }
 
@@ -104,8 +145,8 @@ class ImageGenerator
             return;
         }
 
-        const imageRequest = new Depth2ImgParams(clientId, session, params, destStateVar);
-        this._imageRequestsPending.push(imageRequest);
+        const imageRequest = new Depth2ImgRequest(clientId, session, params, destStateVar);
+        this._dispatchImageRequestToServer(imageRequest);
         this._tryProcessNextRequest();
     }
 
@@ -118,8 +159,8 @@ class ImageGenerator
             return;
         }
 
-        const imageRequest = new Sketch2ImgParams(clientId, session, prompt, inputImageBase64, destStateVar);
-        this._imageRequestsPending.push(imageRequest);
+        const imageRequest = new Sketch2ImgRequest(clientId, session, prompt, inputImageBase64, destStateVar);
+        this._dispatchImageRequestToServer(imageRequest);
         this._tryProcessNextRequest();
     }
 
@@ -149,9 +190,9 @@ class ImageGenerator
         return base64;
     }
 
-    _getImageServerOptions(onOptions)
+    _getImageServerOptions(imageRequest, onOptions)
     {
-        const url = "http://" + this._imageServerParams.host + ":" + this._imageServerParams.port + "/sdapi/v1/options";
+        const url = "http://" + imageRequest.host + ":" + imageRequest.port + "/sdapi/v1/options";
         http.get(url, response =>
         {
             response.on("data", data =>
@@ -174,7 +215,7 @@ class ImageGenerator
         });
     }
 
-    _setImageModel(model)
+    _setImageModel(imageRequest, model)
     {
         console.log(`Setting image model: ${model}`);
 
@@ -184,8 +225,8 @@ class ImageGenerator
 
         // Post
         const urlParams = {
-            host: this._imageServerParams.host,
-            port: this._imageServerParams.port,
+            host: imageRequest.host,
+            port: imageRequest.port,
             path: "/sdapi/v1/options",
             method: "POST",
             headers: { "Content-Type": "application/json" }
@@ -204,16 +245,16 @@ class ImageGenerator
 
     _processTxt2ImgRequest(imageRequest)
     {
-        this._imageRequestInProgress = true;
+        imageRequest.imageServer.imageRequestInProgress = true;
 
         const self = this;
 
-        this._getImageServerOptions(options =>
+        this._getImageServerOptions(imageRequest, options =>
         {
             const model = options["sd_model_checkpoint"];
-            if (self._imageServerParams.txt2ImgModel != model)
+            if (self._txt2ImgModel != model)
             {
-                self._setImageModel(self._imageServerParams.txt2ImgModel);
+                self._setImageModel(imageRequest, self._txt2ImgModel);
             }
             self._continueTxt2ImgRequest(imageRequest);
         });
@@ -273,28 +314,17 @@ class ImageGenerator
         payload["seed"] = 42;
         payload["cfg_scale"] = 9;   // 7?
         payload["steps"] = 40;
-        payload["batch_size"] = 4;
+        payload["batch_size"] = imageRequest.batchSize;
+        payload["n_iter"] = imageRequest.numIterations;
 
         // Post request
         const urlParams = {
-            host: this._imageServerParams.host,
-            port: this._imageServerParams.port,
+            host: imageRequest.host,
+            port: imageRequest.port,
             path: "/sdapi/v1/txt2img",
             method: "POST",
             headers: { "Content-Type": "application/json" }
         };
-
-        function dummyResponse()
-        {
-            // Use placeholder images
-            const imageByUuid = {};
-            const numImagesExpected = payload["batch_size"] * payload["n_iter"];
-            for (let i = 0; i < numImagesExpected; i++)
-            {
-                imageByUuid[crypto.randomUUID()] = randomChoice(self._placeholderImages);
-            }
-            session.receiveImageResponse(clientId, destStateVar, imageByUuid);
-        }
 
         function onResponse(response)
         {
@@ -310,8 +340,8 @@ class ImageGenerator
                     const responseObj = JSON.parse(data);
                     if (!responseObj["images"])
                     {
-                        console.log("Error: Did not receive any images");
-                        dummyResponse();
+                        console.log(`Error: Did not receive any images from ${imageRequest.host}:${imageRequest.port}`);
+                        self._dispatchImageRequestToServer(imageRequest);
                     }
                     else
                     {
@@ -336,12 +366,13 @@ class ImageGenerator
                 }
                 catch (error)
                 {
-                    console.log("Error: Unable to parse response from image server");
-                    dummyResponse();
+                    console.log(`Error: Unable to parse response from image server ${imageRequest.host}:${imageRequest.port}`);
+                    self._dispatchImageRequestToServer(imageRequest);
                 }
                 finally
                 {
-                    self._imageRequestInProgress = false;
+                    // Finish request!
+                    imageRequest.imageServer.imageRequestInProgress = false;
                     setTimeout(() => self._tryProcessNextRequest(), 0);
                 }
             });
@@ -350,9 +381,9 @@ class ImageGenerator
         const request = http.request(urlParams, onResponse);
         request.on("error", error =>
         {
-            console.log(`Error: txt2img request failed`);
+            console.log(`Error: txt2img request failed on ${imageRequest.host}:${imageRequest.port}`);
             console.log(error);
-            dummyResponse();
+            self._dispatchImageRequestToServer(imageRequest);   // try next
         });
         request.write(JSON.stringify(payload));
         request.end();
@@ -360,16 +391,16 @@ class ImageGenerator
 
     _processDepth2ImgRequest(imageRequest)
     {
-        this._imageRequestInProgress = true;
+        imageRequest.imageServer.imageRequestInProgress = true;
 
         const self = this;
 
-        this._getImageServerOptions(options =>
+        this._getImageServerOptions(imageRequest, options =>
         {
             const model = options["sd_model_checkpoint"];
-            if (self._imageServerParams.depth2ImgModel != model)
+            if (self._depth2ImgModel != model)
             {
-                self._setImageModel(self._imageServerParams.depth2ImgModel);
+                self._setImageModel(imageRequest, self._depth2ImgModel);
             }
             self._continueDepth2ImgRequest(imageRequest);
         });
@@ -433,8 +464,8 @@ class ImageGenerator
         payload["cfg_scale"] = 9;
         payload["denoising_strength"] = 0.9;
         payload["steps"] = 50;
-        payload["batch_size"] = 1;
-        payload["n_iter"] = 4;             // generate 4 images sequentially, which seems to yield more diverse results (https://github.com/CompVis/stable-diffusion/issues/218)
+        payload["batch_size"] = imageRequest.batchSize;
+        payload["n_iter"] = imageRequest.numIterations;
         payload["sampler_name"] = "DDIM",
         payload["sampler_index"] = "DDIM";  // this parameter is deprecated, supposedly
         payload["seed_resize_from_h"] = 0;
@@ -443,24 +474,12 @@ class ImageGenerator
 
         // Post request
         const urlParams = {
-            host: this._imageServerParams.host,
-            port: this._imageServerParams.port,
+            host: imageRequest.host,
+            port: imageRequest.port,
             path: "/sdapi/v1/img2img",
             method: "POST",
             headers: { "Content-Type": "application/json" }
         };
-
-        function dummyResponse()
-        {
-            // Use placeholder images
-            const imageByUuid = {};
-            const numImagesExpected = payload["batch_size"] * payload["n_iter"];
-            for (let i = 0; i < numImagesExpected; i++)
-            {
-                imageByUuid[crypto.randomUUID()] = randomChoice(self._placeholderImages);
-            }
-            session.receiveImageResponse(clientId, destStateVar, imageByUuid);
-        }
 
         function onResponse(response)
         {
@@ -476,8 +495,8 @@ class ImageGenerator
                     const responseObj = JSON.parse(data);
                     if (!responseObj["images"])
                     {
-                        console.log("Error: Did not receive any images");
-                        dummyResponse();
+                        console.log(`Error: Did not receive any images from ${imageRequest.host}:${imageRequest.port}`);
+                        self._dispatchImageRequestToServer(imageRequest);
                     }
                     else
                     {
@@ -502,12 +521,13 @@ class ImageGenerator
                 }
                 catch (error)
                 {
-                    console.log("Error: Unable to parse response from image server");
-                    dummyResponse();
+                    console.log(`Error: Unable to parse response from image server ${imageRequest.host}:${imageRequest.port}`);
+                    self._dispatchImageRequestToServer(imageRequest);
                 }
                 finally
                 {
-                    self._imageRequestInProgress = false;
+                    // Finish request!
+                    imageRequest.imageServer.imageRequestInProgress = false;
                     setTimeout(() => self._tryProcessNextRequest(), 0);
                 }
             });
@@ -516,9 +536,9 @@ class ImageGenerator
         const request = http.request(urlParams, onResponse);
         request.on("error", error =>
         {
-            console.log(`Error: depth2img request failed`);
+            console.log(`Error: depth2img request failed on ${imageRequest.host}:${imageRequest.port}`);
             console.log(error);
-            dummyResponse();
+            self._dispatchImageRequestToServer(imageRequest);   // try next
         });
         request.write(JSON.stringify(payload));
         request.end();
@@ -526,16 +546,16 @@ class ImageGenerator
 
     _processSketch2ImgRequest(imageRequest)
     {
-        this._imageRequestInProgress = true;
+        imageRequest.imageServer.imageRequestInProgress = true;
 
         const self = this;
 
-        this._getImageServerOptions(options =>
+        this._getImageServerOptions(imageRequest, options =>
         {
             const model = options["sd_model_checkpoint"];
-            if (self._imageServerParams.txt2ImgModel != model)
+            if (self._txt2ImgModel != model)
             {
-                self._setImageModel(self._imageServerParams.txt2ImgModel);
+                self._setImageModel(imageRequest, self._txt2ImgModel);
             }
             self._continueSketch2ImgRequest(imageRequest);
         });
@@ -597,7 +617,8 @@ class ImageGenerator
         payload["seed"] = 42;
         payload["cfg_scale"] = 9;   // 7?
         payload["steps"] = 40;
-        payload["batch_size"] = 4;
+        payload["batch_size"] = imageRequest.batchSize;
+        payload["n_iter"] = imageRequest.numIterations;
         payload["init_images"] = [ inputImageBase64 ];
 
         // ControlNet stuff
@@ -626,24 +647,12 @@ class ImageGenerator
 
         // Post request
         const urlParams = {
-            host: this._imageServerParams.host,
-            port: this._imageServerParams.port,
+            host: imageRequest.host,
+            port: imageRequest.port,
             path: "/sdapi/v1/txt2img",
             method: "POST",
             headers: { "Content-Type": "application/json" }
         };
-
-        function dummyResponse()
-        {
-            // Use placeholder images
-            const imageByUuid = {};
-            const numImagesExpected = payload["batch_size"] * payload["n_iter"];
-            for (let i = 0; i < numImagesExpected; i++)
-            {
-                imageByUuid[crypto.randomUUID()] = randomChoice(self._placeholderImages);
-            }
-            session.receiveImageResponse(clientId, destStateVar, imageByUuid);
-        }
 
         function onResponse(response)
         {
@@ -659,8 +668,8 @@ class ImageGenerator
                     const responseObj = JSON.parse(data);
                     if (!responseObj["images"])
                     {
-                        console.log("Error: Did not receive any images");
-                        dummyResponse();
+                        console.log(`Error: Did not receive any images from ${imageRequest.host}:${imageRequest.port}`);
+                        self._dispatchImageRequestToServer(imageRequest);
                     }
                     else
                     {
@@ -685,12 +694,13 @@ class ImageGenerator
                 }
                 catch (error)
                 {
-                    console.log("Error: Unable to parse response from image server");
-                    dummyResponse();
+                    console.log(`Error: Unable to parse response from image server ${imageRequest.host}:${imageRequest.port}`);
+                    self._dispatchImageRequestToServer(imageRequest);
                 }
                 finally
                 {
-                    self._imageRequestInProgress = false;
+                    // Finish request!
+                    imageRequest.imageServer.imageRequestInProgress = false;
                     setTimeout(() => self._tryProcessNextRequest(), 0);
                 }
             });
@@ -699,38 +709,73 @@ class ImageGenerator
         const request = http.request(urlParams, onResponse);
         request.on("error", error =>
         {
-            console.log(`Error: sketch2img request failed`);
+            console.log(`Error: sketch2img request failed on ${imageRequest.host}:${imageRequest.port}`);
             console.log(error);
-            dummyResponse();
+            self._dispatchImageRequestToServer(imageRequest);   // try next
         });
         request.write(JSON.stringify(payload));
         request.end();
     }
 
+    _dispatchImageRequestToServer(imageRequest)
+    {
+        // Sort image servers in ascending order of queue size
+        const imageServers = this._imageServers.slice();
+        imageServers.sort((a, b) => a.imageRequestInProgress.length - b.imageRequestsInProgress.length);
+
+        // Find the first server that has not yet been attempted for this image request
+        for (const imageServer of imageServers)
+        {
+            if (!imageRequest.imageServersAttempted.has(imageServer))
+            {
+                // Found a server we have not yet tried. Dispatch to it.
+                imageRequest.imageServer = imageServer;
+                imageRequest.imageServersAttempted.add(imageServer);
+                imageServer.imageRequestsPending.push(imageRequest);
+                console.log(`Dispatched reqest to: ${imageServer.host}:${imageServer.port}`);
+                return;
+            }
+        }
+
+        console.log(`Error: Image request failed across all servers`)
+
+        // Dummy response using placeholder images
+        const imageByUuid = {};
+        const numImagesExpected = imageRequest.batchSize * imageRequest.numIterations;
+        for (let i = 0; i < numImagesExpected; i++)
+        {
+            imageByUuid[crypto.randomUUID()] = randomChoice(this._placeholderImages);
+        }
+        imageRequest.session.receiveImageResponse(imageRequest.clientId, imageRequest.destStateVar, imageByUuid);
+    }
+
     _tryProcessNextRequest()
     {
-        if (this._imageRequestInProgress || this._imageRequestsPending.length <= 0)
+        for (const imageServer of this._imageServers)
         {
-            return;
-        }
+            if (imageServer.imageRequestInProgress || imageServer.imageRequestsPending.length <= 0)
+            {
+                return;
+            }
 
-        const imageRequest = this._imageRequestsPending.shift();
+            const imageRequest = imageServer.imageRequestsPending.shift();
 
-        if (imageRequest instanceof Txt2ImgParams)
-        {
-            this._processTxt2ImgRequest(imageRequest);
-        }
-        else if (imageRequest instanceof Depth2ImgParams)
-        {
-            this._processDepth2ImgRequest(imageRequest);
-        }
-        else if (imageRequest instanceof Sketch2ImgParams)
-        {
-            this._processSketch2ImgRequest(imageRequest);
-        }
-        else
-        {
-            console.log(`Error: Ignoring unknown image request object`);
+            if (imageRequest instanceof Txt2ImgRequest)
+            {
+                this._processTxt2ImgRequest(imageRequest);
+            }
+            else if (imageRequest instanceof Depth2ImgRequest)
+            {
+                this._processDepth2ImgRequest(imageRequest);
+            }
+            else if (imageRequest instanceof Sketch2ImgRequest)
+            {
+                this._processSketch2ImgRequest(imageRequest);
+            }
+            else
+            {
+                console.log(`Error: Ignoring unknown image request object`);
+            }
         }
     }
 
@@ -750,10 +795,20 @@ class ImageGenerator
     {
         if (!useLocalImageServer)
         {
-            this._imageServerParams.host = "ai.steph.ng";
-            this._imageServerParams.port = 80;
+            // Use 3 different servers
+            this._imageServers = [
+                new ImageServer("ai.steph.ng", 80),
+                new ImageServer("sdgame2.steph.ng", 80),
+                new ImageServer("sdgame3.steph.ng", 80)
+            ];
         }
-        console.log(`Image server: ${this._imageServerParams.host}:${this._imageServerParams.port}`);
+
+        console.log("Image servers:");
+        for (const imageServer of this._imageServers)
+        {
+            console.log(`  ${imageServer.host}:${imageServer.port}`);
+        }
+
         this._sessionById = sessionById;
         this._loadRequiredImageAssets();
     }
