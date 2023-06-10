@@ -188,7 +188,7 @@ class ImageGenerator
 
     _getImageServerOptions(imageRequest, onOptions)
     {
-        const url = "http://" + imageRequest.host + ":" + imageRequest.port + "/sdapi/v1/options";
+        const url = "http://" + imageRequest.imageServer.host + ":" + imageRequest.imageServer.port + "/sdapi/v1/options";
         http.get(url, response =>
         {
             response.on("data", data =>
@@ -221,8 +221,8 @@ class ImageGenerator
 
         // Post
         const urlParams = {
-            host: imageRequest.host,
-            port: imageRequest.port,
+            host: imageRequest.imageServer.host,
+            port: imageRequest.imageServer.port,
             path: "/sdapi/v1/options",
             method: "POST",
             headers: { "Content-Type": "application/json" }
@@ -315,8 +315,8 @@ class ImageGenerator
 
         // Post request
         const urlParams = {
-            host: imageRequest.host,
-            port: imageRequest.port,
+            host: imageRequest.imageServer.host,
+            port: imageRequest.imageServer.port,
             path: "/sdapi/v1/txt2img",
             method: "POST",
             headers: { "Content-Type": "application/json" }
@@ -336,7 +336,7 @@ class ImageGenerator
                     const responseObj = JSON.parse(data);
                     if (!responseObj["images"])
                     {
-                        console.log(`Error: Did not receive any images from ${imageRequest.host}:${imageRequest.port}`);
+                        console.log(`Error: Did not receive any images from ${imageRequest.imageServer.host}:${imageRequest.imageServer.port}`);
                         self._dispatchImageRequestToServer(imageRequest);
                     }
                     else
@@ -362,7 +362,7 @@ class ImageGenerator
                 }
                 catch (error)
                 {
-                    console.log(`Error: Unable to parse response from image server ${imageRequest.host}:${imageRequest.port}`);
+                    console.log(`Error: Unable to parse response from image server ${imageRequest.imageServer.host}:${imageRequest.imageServer.port}`);
                     self._dispatchImageRequestToServer(imageRequest);
                 }
                 finally
@@ -377,7 +377,7 @@ class ImageGenerator
         const request = http.request(urlParams, onResponse);
         request.on("error", error =>
         {
-            console.log(`Error: txt2img request failed on ${imageRequest.host}:${imageRequest.port}`);
+            console.log(`Error: txt2img request failed on ${imageRequest.imageServer.host}:${imageRequest.imageServer.port}`);
             console.log(error);
             self._dispatchImageRequestToServer(imageRequest);   // try next
         });
@@ -470,8 +470,8 @@ class ImageGenerator
 
         // Post request
         const urlParams = {
-            host: imageRequest.host,
-            port: imageRequest.port,
+            host: imageRequest.imageServer.host,
+            port: imageRequest.imageServer.port,
             path: "/sdapi/v1/img2img",
             method: "POST",
             headers: { "Content-Type": "application/json" }
@@ -491,7 +491,7 @@ class ImageGenerator
                     const responseObj = JSON.parse(data);
                     if (!responseObj["images"])
                     {
-                        console.log(`Error: Did not receive any images from ${imageRequest.host}:${imageRequest.port}`);
+                        console.log(`Error: Did not receive any images from ${imageRequest.imageServer.host}:${imageRequest.imageServer.port}`);
                         self._dispatchImageRequestToServer(imageRequest);
                     }
                     else
@@ -517,7 +517,7 @@ class ImageGenerator
                 }
                 catch (error)
                 {
-                    console.log(`Error: Unable to parse response from image server ${imageRequest.host}:${imageRequest.port}`);
+                    console.log(`Error: Unable to parse response from image server ${imageRequest.imageServer.host}:${imageRequest.imageServer.port}`);
                     self._dispatchImageRequestToServer(imageRequest);
                 }
                 finally
@@ -532,7 +532,7 @@ class ImageGenerator
         const request = http.request(urlParams, onResponse);
         request.on("error", error =>
         {
-            console.log(`Error: depth2img request failed on ${imageRequest.host}:${imageRequest.port}`);
+            console.log(`Error: depth2img request failed on ${imageRequest.imageServer.host}:${imageRequest.imageServer.port}`);
             console.log(error);
             self._dispatchImageRequestToServer(imageRequest);   // try next
         });
@@ -643,8 +643,8 @@ class ImageGenerator
 
         // Post request
         const urlParams = {
-            host: imageRequest.host,
-            port: imageRequest.port,
+            host: imageRequest.imageServer.host,
+            port: imageRequest.imageServer.port,
             path: "/sdapi/v1/txt2img",
             method: "POST",
             headers: { "Content-Type": "application/json" }
@@ -664,7 +664,7 @@ class ImageGenerator
                     const responseObj = JSON.parse(data);
                     if (!responseObj["images"])
                     {
-                        console.log(`Error: Did not receive any images from ${imageRequest.host}:${imageRequest.port}`);
+                        console.log(`Error: Did not receive any images from ${imageRequest.imageServer.host}:${imageRequest.imageServer.port}`);
                         self._dispatchImageRequestToServer(imageRequest);
                     }
                     else
@@ -690,7 +690,7 @@ class ImageGenerator
                 }
                 catch (error)
                 {
-                    console.log(`Error: Unable to parse response from image server ${imageRequest.host}:${imageRequest.port}`);
+                    console.log(`Error: Unable to parse response from image server ${imageRequest.imageServer.host}:${imageRequest.imageServer.port}`);
                     self._dispatchImageRequestToServer(imageRequest);
                 }
                 finally
@@ -705,7 +705,7 @@ class ImageGenerator
         const request = http.request(urlParams, onResponse);
         request.on("error", error =>
         {
-            console.log(`Error: sketch2img request failed on ${imageRequest.host}:${imageRequest.port}`);
+            console.log(`Error: sketch2img request failed on ${imageRequest.imageServer.host}:${imageRequest.imageServer.port}`);
             console.log(error);
             self._dispatchImageRequestToServer(imageRequest);   // try next
         });
