@@ -113,7 +113,7 @@ class ImageGenerator
 
     // Image servers (by default only a single local server)
     _imageServers = [ new ImageServer("127.0.0.1", 7860) ];
-    _txtImgModel = "v1-5-pruned-emaonly.safetensors";
+    _txt2ImgModel = "v1-5-pruned-emaonly.safetensors";
     _depth2ImgModel = "512-depth-ema.ckpt";
 
 
@@ -365,6 +365,9 @@ class ImageGenerator
                 {
                     console.log(`Error: Unable to parse response from image server ${imageRequest.imageServer.host}:${imageRequest.imageServer.port}`);
                     console.log(error);
+
+                    // Finish request and dispatch again
+                    imageRequest.imageServer.imageRequestInProgress = false;
                     self._dispatchImageRequestToServer(imageRequest);
                 }
                 finally
@@ -521,6 +524,9 @@ class ImageGenerator
                 {
                     console.log(`Error: Unable to parse response from image server ${imageRequest.imageServer.host}:${imageRequest.imageServer.port}`);
                     console.log(error);
+
+                    // Finish request and dispatch again
+                    imageRequest.imageServer.imageRequestInProgress = false;
                     self._dispatchImageRequestToServer(imageRequest);
                 }
                 finally
@@ -695,6 +701,9 @@ class ImageGenerator
                 {
                     console.log(`Error: Unable to parse response from image server ${imageRequest.imageServer.host}:${imageRequest.imageServer.port}`);
                     console.log(error);
+
+                    // Finish request and dispatch again
+                    imageRequest.imageServer.imageRequestInProgress = false;
                     self._dispatchImageRequestToServer(imageRequest);
                 }
                 finally
@@ -719,6 +728,12 @@ class ImageGenerator
 
     _dispatchImageRequestToServer(imageRequest)
     {
+        // If we were already assigned a server earlier, make sure to finish this request
+        if (imageRequest.imageServer)
+        {
+            imageRequest.imageServer.imageRequestInProgress = false;
+        }
+
         // Sort image servers in ascending order of queue size
         const imageServers = this._imageServers.slice();
         imageServers.sort((a, b) => a.imageRequestsPending.length - b.imageRequestsPending.length);
