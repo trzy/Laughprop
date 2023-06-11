@@ -766,9 +766,11 @@ class ImageGenerator
 
     _tryProcessNextRequest()
     {
-        console.log("Processing next image requests");
+        console.log("Checking for pending image requests...");
         for (const imageServer of this._imageServers)
         {
+            console.log(`  ${imageServer.host}:${imageServer.port}: ${imageServer.imageRequestsPending.length} pending, in_progress=${imageServer.imageRequestInProgress}`);
+
             if (imageServer.imageRequestInProgress || imageServer.imageRequestsPending.length <= 0)
             {
                 continue;
