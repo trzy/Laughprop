@@ -846,7 +846,7 @@ class ImageGenerator
         console.log("Finished checking");
         for (const imageServer of this._imageServers)
         {
-            console.log(`  ${imageServer.host}:${imageServer.port}: ${imageServer.imageRequestsPending.length} pending, in_progress=${imageServer.imageRequestInProgress}`);
+            console.log(`  ${imageServer.host}:${imageServer.port}: ${imageServer.imageRequestsPending.length} pending, in_progress=${imageServer.isBusy()}`);
         }
     }
 
