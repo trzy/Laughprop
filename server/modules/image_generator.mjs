@@ -95,7 +95,31 @@ class ImageServer
     host;
     port;
     imageRequestsPending = [];
-    imageRequestInProgress = false;
+    imageRequestInProgress = null;
+
+    enqueue(imageRequest)
+    {
+        imageRequest.imageServer = this;
+        imageRequest.imageServersAttempted.add(this);
+        this.imageRequestsPending.push(imageRequest);
+    }
+
+    isBusy()
+    {
+        return this.imageRequestInProgress != null;
+    }
+
+    finishRequest(imageRequest)
+    {
+        if (this.imageRequestInProgress != imageRequest)
+        {
+            console.log(`Internal error: Finishing a request that is not in progress on ${this.host}:${this.port}`);
+        }
+        else
+        {
+            this.imageRequestInProgress = null;
+        }
+    }
 
     constructor(host, port)
     {
@@ -242,7 +266,7 @@ class ImageGenerator
 
     _processTxt2ImgRequest(imageRequest)
     {
-        imageRequest.imageServer.imageRequestInProgress = true;
+        imageRequest.imageServer.imageRequestInProgress = imageRequest;
 
         const self = this;
 
@@ -340,7 +364,7 @@ class ImageGenerator
                         console.log(`Error: Did not receive any images from ${imageRequest.imageServer.host}:${imageRequest.imageServer.port}`);
 
                         // Finish request and dispatch again
-                        imageRequest.imageServer.imageRequestInProgress = false;
+                        imageRequest.imageServer.finishRequest(imageRequest);
                         self._dispatchImageRequestToServer(imageRequest);
                     }
                     else
@@ -370,13 +394,13 @@ class ImageGenerator
                     console.log(error);
 
                     // Finish request and dispatch again
-                    imageRequest.imageServer.imageRequestInProgress = false;
+                    imageRequest.imageServer.finishRequest(imageRequest);
                     self._dispatchImageRequestToServer(imageRequest);
                 }
                 finally
                 {
                     // Finish request!
-                    imageRequest.imageServer.imageRequestInProgress = false;
+                    imageRequest.imageServer.finishRequest(imageRequest);
                     setTimeout(() => self._tryProcessNextRequest(), 0);
                 }
             });
@@ -399,7 +423,7 @@ class ImageGenerator
 
     _processDepth2ImgRequest(imageRequest)
     {
-        imageRequest.imageServer.imageRequestInProgress = true;
+        imageRequest.imageServer.imageRequestInProgress = imageRequest;
 
         const self = this;
 
@@ -506,7 +530,7 @@ class ImageGenerator
                         console.log(`Error: Did not receive any images from ${imageRequest.imageServer.host}:${imageRequest.imageServer.port}`);
 
                         // Finish request and dispatch again
-                        imageRequest.imageServer.imageRequestInProgress = false;
+                        imageRequest.imageServer.finishRequest(imageRequest);
                         self._dispatchImageRequestToServer(imageRequest);
                     }
                     else
@@ -536,13 +560,13 @@ class ImageGenerator
                     console.log(error);
 
                     // Finish request and dispatch again
-                    imageRequest.imageServer.imageRequestInProgress = false;
+                    imageRequest.imageServer.finishRequest(imageRequest);
                     self._dispatchImageRequestToServer(imageRequest);
                 }
                 finally
                 {
                     // Finish request!
-                    imageRequest.imageServer.imageRequestInProgress = false;
+                    imageRequest.imageServer.finishRequest(imageRequest);
                     setTimeout(() => self._tryProcessNextRequest(), 0);
                 }
             });
@@ -555,7 +579,7 @@ class ImageGenerator
             console.log(error);
 
             // Finish request and dispatch again
-            imageRequest.imageServer.imageRequestInProgress = false;
+            imageRequest.imageServer.finishRequest(imageRequest);
             self._dispatchImageRequestToServer(imageRequest);   // try next
             setTimeout(() => self._tryProcessNextRequest(), 0);
         });
@@ -565,7 +589,7 @@ class ImageGenerator
 
     _processSketch2ImgRequest(imageRequest)
     {
-        imageRequest.imageServer.imageRequestInProgress = true;
+        imageRequest.imageServer.imageRequestInProgress = imageRequest;
 
         const self = this;
 
@@ -690,7 +714,7 @@ class ImageGenerator
                         console.log(`Error: Did not receive any images from ${imageRequest.imageServer.host}:${imageRequest.imageServer.port}`);
 
                         // Finish request and dispatch again
-                        imageRequest.imageServer.imageRequestInProgress = false;
+                        imageRequest.imageServer.finishRequest(imageRequest);
                         self._dispatchImageRequestToServer(imageRequest);
                     }
                     else
@@ -720,13 +744,13 @@ class ImageGenerator
                     console.log(error);
 
                     // Finish request and dispatch again
-                    imageRequest.imageServer.imageRequestInProgress = false;
+                    imageRequest.imageServer.finishRequest(imageRequest);
                     self._dispatchImageRequestToServer(imageRequest);
                 }
                 finally
                 {
                     // Finish request!
-                    imageRequest.imageServer.imageRequestInProgress = false;
+                    imageRequest.imageServer.finishRequest(imageRequest);
                     setTimeout(() => self._tryProcessNextRequest(), 0);
                 }
             });
@@ -739,7 +763,7 @@ class ImageGenerator
             console.log(error);
 
             // Finish request and dispatch again
-            imageRequest.imageServer.imageRequestInProgress = false;
+            imageRequest.imageServer.finishRequest(imageRequest);
             self._dispatchImageRequestToServer(imageRequest);   // try next
             setTimeout(() => self._tryProcessNextRequest(), 0);
         });
@@ -753,15 +777,23 @@ class ImageGenerator
         const imageServers = this._imageServers.slice();
         imageServers.sort((a, b) => a.imageRequestsPending.length - b.imageRequestsPending.length);
 
+        // Sanity check: ensure no server already has this image request
+        for (const imageServer of imageServers)
+        {
+            if (imageServer.imageRequestInProgress == imageRequest || imageServer.imageRequestsPending.includes(imageRequest))
+            {
+                console.log(`Internal error: Request already pending for ${imageServer.host}:${imageServer.port}`);
+                return;
+            }
+        }
+
         // Find the first server that has not yet been attempted for this image request
         for (const imageServer of imageServers)
         {
             if (!imageRequest.imageServersAttempted.has(imageServer))
             {
                 // Found a server we have not yet tried. Dispatch to it.
-                imageRequest.imageServer = imageServer;
-                imageRequest.imageServersAttempted.add(imageServer);
-                imageServer.imageRequestsPending.push(imageRequest);
+                imageServer.enqueue(imageRequest);
                 console.log(`Dispatched request to: ${imageServer.host}:${imageServer.port}`);
                 return;
             }
@@ -784,9 +816,9 @@ class ImageGenerator
         console.log("Checking for pending image requests...");
         for (const imageServer of this._imageServers)
         {
-            console.log(`  ${imageServer.host}:${imageServer.port}: ${imageServer.imageRequestsPending.length} pending, in_progress=${imageServer.imageRequestInProgress}`);
+            console.log(`  ${imageServer.host}:${imageServer.port}: ${imageServer.imageRequestsPending.length} pending, in_progress=${imageServer.isBusy()}`);
 
-            if (imageServer.imageRequestInProgress || imageServer.imageRequestsPending.length <= 0)
+            if (imageServer.isBusy() || imageServer.imageRequestsPending.length <= 0)
             {
                 continue;
             }
