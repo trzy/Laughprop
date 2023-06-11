@@ -728,12 +728,6 @@ class ImageGenerator
 
     _dispatchImageRequestToServer(imageRequest)
     {
-        // If we were already assigned a server earlier, make sure to finish this request
-        if (imageRequest.imageServer)
-        {
-            imageRequest.imageServer.imageRequestInProgress = false;
-        }
-
         // Sort image servers in ascending order of queue size
         const imageServers = this._imageServers.slice();
         imageServers.sort((a, b) => a.imageRequestsPending.length - b.imageRequestsPending.length);
