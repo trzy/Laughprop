@@ -798,9 +798,10 @@ class ImageGenerator
         {
             // Use 3 different servers
             this._imageServers = [
-                new ImageServer("ai.steph.ng", 80),
+                new ImageServer("sdgame1.steph.ng", 80),
                 new ImageServer("sdgame2.steph.ng", 80),
-                new ImageServer("sdgame3.steph.ng", 80)
+                new ImageServer("sdgame3.steph.ng", 80),
+                new ImageServer("ai.steph.ng", 80),
             ];
         }
 
