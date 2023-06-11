@@ -236,7 +236,7 @@ class ImageGenerator
         });
     }
 
-    _setImageModel(imageRequest, model)
+    _setImageModel(imageRequest, model, onComplete)
     {
         console.log(`Setting image model: ${model}`);
 
@@ -253,11 +253,12 @@ class ImageGenerator
             headers: { "Content-Type": "application/json" }
         };
 
-        const request = http.request(urlParams);
+        const request = http.request(urlParams, _ => onComplete());
         request.on("error", error =>
         {
             console.log(`Error: Model set request failed`);
             console.log(error);
+            onComplete();
         });
 
         request.write(JSON.stringify(options));
@@ -275,9 +276,12 @@ class ImageGenerator
             const model = options["sd_model_checkpoint"];
             if (self._txt2ImgModel != model)
             {
-                self._setImageModel(imageRequest, self._txt2ImgModel);
+                self._setImageModel(imageRequest, self._txt2ImgModel, () => self._continueTxt2ImgRequest(imageRequest));
             }
-            self._continueTxt2ImgRequest(imageRequest);
+            else
+            {
+                self._continueTxt2ImgRequest(imageRequest);
+            }
         });
     }
 
@@ -356,16 +360,14 @@ class ImageGenerator
             });
             response.on("end", () =>
             {
+                let retry = false;
                 try
                 {
                     const responseObj = JSON.parse(data);
                     if (!responseObj["images"])
                     {
                         console.log(`Error: Did not receive any images from ${imageRequest.imageServer.host}:${imageRequest.imageServer.port}`);
-
-                        // Finish request and dispatch again
-                        imageRequest.imageServer.finishRequest(imageRequest);
-                        self._dispatchImageRequestToServer(imageRequest);
+                        retry = true;
                     }
                     else
                     {
@@ -392,16 +394,18 @@ class ImageGenerator
                 {
                     console.log(`Error: Unable to parse response from image server ${imageRequest.imageServer.host}:${imageRequest.imageServer.port}`);
                     console.log(error);
-
-                    // Finish request and dispatch again
-                    imageRequest.imageServer.finishRequest(imageRequest);
-                    self._dispatchImageRequestToServer(imageRequest);
+                    retry = true;
                 }
                 finally
                 {
                     // Finish request!
                     imageRequest.imageServer.finishRequest(imageRequest);
                     setTimeout(() => self._tryProcessNextRequest(), 0);
+                }
+
+                if (retry)
+                {
+                    self._dispatchImageRequestToServer(imageRequest);
                 }
             });
         }
@@ -413,7 +417,7 @@ class ImageGenerator
             console.log(error);
 
             // Finish request and dispatch again
-            imageRequest.imageServer.imageRequestInProgress = false;
+            imageRequest.imageServer.finishRequest(imageRequest);
             self._dispatchImageRequestToServer(imageRequest);   // try next
             setTimeout(() => self._tryProcessNextRequest(), 0);
         });
@@ -432,9 +436,12 @@ class ImageGenerator
             const model = options["sd_model_checkpoint"];
             if (self._depth2ImgModel != model)
             {
-                self._setImageModel(imageRequest, self._depth2ImgModel);
+                self._setImageModel(imageRequest, self._depth2ImgModel, () => self._continueDepth2ImgRequest(imageRequest));
             }
-            self._continueDepth2ImgRequest(imageRequest);
+            else
+            {
+                self._continueDepth2ImgRequest(imageRequest);
+            }
         });
     }
 
@@ -522,16 +529,14 @@ class ImageGenerator
             });
             response.on("end", () =>
             {
+                let retry = false;
                 try
                 {
                     const responseObj = JSON.parse(data);
                     if (!responseObj["images"])
                     {
                         console.log(`Error: Did not receive any images from ${imageRequest.imageServer.host}:${imageRequest.imageServer.port}`);
-
-                        // Finish request and dispatch again
-                        imageRequest.imageServer.finishRequest(imageRequest);
-                        self._dispatchImageRequestToServer(imageRequest);
+                        retry = true;
                     }
                     else
                     {
@@ -558,16 +563,18 @@ class ImageGenerator
                 {
                     console.log(`Error: Unable to parse response from image server ${imageRequest.imageServer.host}:${imageRequest.imageServer.port}`);
                     console.log(error);
-
-                    // Finish request and dispatch again
-                    imageRequest.imageServer.finishRequest(imageRequest);
-                    self._dispatchImageRequestToServer(imageRequest);
+                    retry = true;
                 }
                 finally
                 {
                     // Finish request!
                     imageRequest.imageServer.finishRequest(imageRequest);
                     setTimeout(() => self._tryProcessNextRequest(), 0);
+                }
+
+                if (retry)
+                {
+                    self._dispatchImageRequestToServer(imageRequest);
                 }
             });
         }
@@ -598,9 +605,12 @@ class ImageGenerator
             const model = options["sd_model_checkpoint"];
             if (self._txt2ImgModel != model)
             {
-                self._setImageModel(imageRequest, self._txt2ImgModel);
+                self._setImageModel(imageRequest, self._txt2ImgModel, () => self._continueSketch2ImgRequest(imageRequest));
             }
-            self._continueSketch2ImgRequest(imageRequest);
+            else
+            {
+                self._continueSketch2ImgRequest(imageRequest);
+            }
         });
     }
 
@@ -706,16 +716,14 @@ class ImageGenerator
             });
             response.on("end", () =>
             {
+                let retry = false;
                 try
                 {
                     const responseObj = JSON.parse(data);
                     if (!responseObj["images"])
                     {
                         console.log(`Error: Did not receive any images from ${imageRequest.imageServer.host}:${imageRequest.imageServer.port}`);
-
-                        // Finish request and dispatch again
-                        imageRequest.imageServer.finishRequest(imageRequest);
-                        self._dispatchImageRequestToServer(imageRequest);
+                        retry = true;
                     }
                     else
                     {
@@ -742,16 +750,18 @@ class ImageGenerator
                 {
                     console.log(`Error: Unable to parse response from image server ${imageRequest.imageServer.host}:${imageRequest.imageServer.port}`);
                     console.log(error);
-
-                    // Finish request and dispatch again
-                    imageRequest.imageServer.finishRequest(imageRequest);
-                    self._dispatchImageRequestToServer(imageRequest);
+                    retry = true;
                 }
                 finally
                 {
                     // Finish request!
                     imageRequest.imageServer.finishRequest(imageRequest);
                     setTimeout(() => self._tryProcessNextRequest(), 0);
+                }
+
+                if (retry)
+                {
+                    self._dispatchImageRequestToServer(imageRequest);
                 }
             });
         }
