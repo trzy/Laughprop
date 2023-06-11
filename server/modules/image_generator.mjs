@@ -338,6 +338,9 @@ class ImageGenerator
                     if (!responseObj["images"])
                     {
                         console.log(`Error: Did not receive any images from ${imageRequest.imageServer.host}:${imageRequest.imageServer.port}`);
+
+                        // Finish request and dispatch again
+                        imageRequest.imageServer.imageRequestInProgress = false;
                         self._dispatchImageRequestToServer(imageRequest);
                     }
                     else
@@ -384,7 +387,11 @@ class ImageGenerator
         {
             console.log(`Error: txt2img request failed on ${imageRequest.imageServer.host}:${imageRequest.imageServer.port}`);
             console.log(error);
+
+            // Finish request and dispatch again
+            imageRequest.imageServer.imageRequestInProgress = false;
             self._dispatchImageRequestToServer(imageRequest);   // try next
+            setTimeout(() => self._tryProcessNextRequest(), 0);
         });
         request.write(JSON.stringify(payload));
         request.end();
@@ -497,6 +504,9 @@ class ImageGenerator
                     if (!responseObj["images"])
                     {
                         console.log(`Error: Did not receive any images from ${imageRequest.imageServer.host}:${imageRequest.imageServer.port}`);
+
+                        // Finish request and dispatch again
+                        imageRequest.imageServer.imageRequestInProgress = false;
                         self._dispatchImageRequestToServer(imageRequest);
                     }
                     else
@@ -543,7 +553,11 @@ class ImageGenerator
         {
             console.log(`Error: depth2img request failed on ${imageRequest.imageServer.host}:${imageRequest.imageServer.port}`);
             console.log(error);
+
+            // Finish request and dispatch again
+            imageRequest.imageServer.imageRequestInProgress = false;
             self._dispatchImageRequestToServer(imageRequest);   // try next
+            setTimeout(() => self._tryProcessNextRequest(), 0);
         });
         request.write(JSON.stringify(payload));
         request.end();
@@ -674,6 +688,9 @@ class ImageGenerator
                     if (!responseObj["images"])
                     {
                         console.log(`Error: Did not receive any images from ${imageRequest.imageServer.host}:${imageRequest.imageServer.port}`);
+
+                        // Finish request and dispatch again
+                        imageRequest.imageServer.imageRequestInProgress = false;
                         self._dispatchImageRequestToServer(imageRequest);
                     }
                     else
@@ -720,7 +737,11 @@ class ImageGenerator
         {
             console.log(`Error: sketch2img request failed on ${imageRequest.imageServer.host}:${imageRequest.imageServer.port}`);
             console.log(error);
+
+            // Finish request and dispatch again
+            imageRequest.imageServer.imageRequestInProgress = false;
             self._dispatchImageRequestToServer(imageRequest);   // try next
+            setTimeout(() => self._tryProcessNextRequest(), 0);
         });
         request.write(JSON.stringify(payload));
         request.end();
@@ -788,6 +809,12 @@ class ImageGenerator
             {
                 console.log(`Error: Ignoring unknown image request object`);
             }
+        }
+
+        console.log("Finished checking");
+        for (const imageServer of this._imageServers)
+        {
+            console.log(`  ${imageServer.host}:${imageServer.port}: ${imageServer.imageRequestsPending.length} pending, in_progress=${imageServer.imageRequestInProgress}`);
         }
     }
 
