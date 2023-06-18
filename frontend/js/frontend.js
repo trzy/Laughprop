@@ -55,7 +55,9 @@ var _clientId = generateUuid();
 function connectToBackend()
 {
     let location = window.location;
-    let wsUrl = "wss://" + location.hostname + ":" + location.port;
+    let isLocal = location.hostname == "localhost" || location.hostname == "127.0.0.1";
+    let protocol = isLocal ? "ws" : "wss";  // cannot mix secure wss with unsecure http on local machines
+    let wsUrl = protocol + "://" + location.hostname + ":" + location.port;
 
     console.log(`Connecting to backend socket: ${wsUrl}`)
     _socket = new WebSocket(wsUrl);
