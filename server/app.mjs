@@ -1,18 +1,35 @@
-/*
+/**
+ ** Laughprop
+ ** A Stable Diffusion Party Game
+ ** Copyright 2023 Bart Trzynadlowski, Steph Ng
+ ** 
+ ** This file is part of Laughprop.
+ **
+ ** Laughprop is free software: you can redistribute it and/or modify it under
+ ** the terms of the GNU General Public License as published by the Free
+ ** Software Foundation, either version 3 of the License, or (at your option)
+ ** any later version.
+ **
+ ** Laughprop is distributed in the hope that it will be useful, but WITHOUT
+ ** ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ ** FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ ** more details.
+ **
+ ** You should have received a copy of the GNU General Public License along
+ ** with Laughprop.  If not, see <http://www.gnu.org/licenses/>.
+ **/
+
+/* 
  * app.mjs
  * Bart Trzynadlowski, 2023
  *
  * Laughprop server. Defined as a .mjs file so we can use the ES6 module system and share modules
  * with client code.
  *
- * TODO Next:
+ * TODO:
  * ----------
  * - Games should specify how many users are required to play. Drawing game cannot drop any users once
  *   it starts.
- * - Image requests need to be properly serialized because option get requests return immediately and
- *   it is not clear if they are returning the currently-used options or last-set options, so even if
- *   image server is serializing internally, we may have an issue where we fail to set the model
- *   correctly. Need to wait till one request is done before beginning the next.
  * - Fix CSS (centering of candidate images).
  * - Socket reconnect on front-end? Don't remove dead clients until after some timeout here, allowing
  *   them to resume? If we do this, must perform replay. Alternatively, can remove clients immediately
