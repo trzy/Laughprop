@@ -519,7 +519,7 @@ class ImageGenerator
 
         // Our params
         payload["prompt"] = params.prompt;
-        payload["negative_prompt"] = params.negative_prompt;
+        payload["negative_prompt"] = params.negativePrompt;
         payload["seed"] = 585501288;
         payload["cfg_scale"] = 9;
         payload["denoising_strength"] = 0.9;
