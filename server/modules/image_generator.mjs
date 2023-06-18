@@ -897,7 +897,7 @@ class ImageGenerator
     {
         if (!useLocalImageServer)
         {
-            // Use 3 different servers
+            // Use up to 4 different servers
             this._imageServers = [
                 new ImageServer("sdgame1.steph.ng", 80),
                 new ImageServer("sdgame2.steph.ng", 80),
