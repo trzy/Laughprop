@@ -22,6 +22,7 @@ const script = [
                 ui:     {
                     command:    "multi_select_multi_prompt_widget",
                     param:      {
+                        "Pulp Fiction":     [ "Vincent (John Travolta)", "Jules (Samuel L. Jackson)", "Mia (Uma Thurman)" ],
                         "Bloodsport":       [ "Frank Dux (Jean-Claude Van Damme)", "Chong Li (Bolo Yeung)" ],
                         "Step Brothers":    [ "Brennan (Will Ferrell)", "Dale (John C. Reilly)" ],
                         "The Hangover":     [ "Phil (Bradley Cooper)", "Stu (Ed Helms)", "Doug (Justin Bartha)", "Alan (Zach Galifianakis)" ],
@@ -43,6 +44,7 @@ const script = [
                 stateVar: "@@selected_movie",
                 writeToStateVar: "@@depth2img_command_scene1",
                 selections: {
+                    "Pulp Fiction":     { image: "PulpFiction/PulpFiction_1_Dance.jpg", prompt: "{@@prompt_0} in a tuxedo dancing and looking seductive.", negativePrompt: "grotesque, distorted face, unrealistic hands, unrealistic fingers" },
                     "Bloodsport":       { image: "Bloodsport/Bloodsport_1_FrankDux.jpg", prompt: "{@@prompt_0} wearing a white gi with a japanese garden in the background. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster" },
                     "Step Brothers":    { image: "StepBrothers/StepBrothers_1_Rules.jpg", prompt: "{@@prompt_1} wearing a red shirt, pointing finger in accusation in a suburban den. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster, bad hands" },
                     "The Hangover":     { image: "Hangover/Hangover_1_Call.jpg", prompt: "{@@prompt_0} with slightly bruised face listening to a cell phone while wearing aviator sun glasses and a worried expression on his face. Background is the Nevada desert. Cinematic shot. Canon 5d", negativePrompt: "grotesque, distorted face, monster, headphones" },
@@ -56,6 +58,7 @@ const script = [
                 stateVar: "@@selected_movie",
                 writeToStateVar: "@@depth2img_command_scene2",
                 selections: {
+                    "Pulp Fiction":     { image: "PulpFiction/PulpFiction_2_Burger.jpg", prompt: "{@@prompt_1} in a suit with an afro eating a cheeseburger. Cinematic shot. Canon5d. Background blurred.", negativePrompt: "grotesque, distorted face, unrealistic hands, unrealistic fingers" },
                     "Bloodsport":       { image: "Bloodsport/Bloodsport_2_ChongLi.jpg", prompt: "muscular {@@prompt_1} in a headband pointing. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster" },
                     "Step Brothers":    { image: "StepBrothers/StepBrothers_2_Drums.jpg", prompt: "{@@prompt_0} wearing a turquoise shirt fumbling with zipper and standing behind a drum set in a suburban bedroom. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster" },
                     "The Hangover":     { image: "Hangover/Hangover_2_Baby.jpg", prompt: "{@@prompt_3} with a gray t-shirt, aviator sunglasses, wearing a baby bjorn and a baby in it, leaning over in an elevator.", negativePrompt: "grotesque, distorted face, monster" },
@@ -69,6 +72,7 @@ const script = [
                 stateVar: "@@selected_movie",
                 writeToStateVar: "@@depth2img_command_scene3",
                 selections: {
+                    "Pulp Fiction":     { image: "PulpFiction/PulpFiction_3_Uma.jpg", prompt: "{@@prompt_2} with shoulder-length black hair and classic bangs wearing a black dress smoking a cigarette seductively on a bed with a gun in her other hand. Red lipstick. Cinematic shot. Canon 5d", negativePrompt: "grotesque, distorted face, unrealistic hands, unrealistic fingers" },
                     "Bloodsport":       { image: "Bloodsport/Bloodsport_3_Splits.jpg", prompt: "muscular {@@prompt_0} meditating and performing the splits. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster" },
                     "Step Brothers":    { image: "StepBrothers/StepBrothers_3_Fight.jpg", prompt: "{@@prompt_1} wearing a red shirt, raising fist with an enraged facial expression, in the front yard of a suburban house. daytime. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster, bad hands" },
                     "The Hangover":     { image: "Hangover/Hangover_3_Tooth.jpg", prompt: "Hungover {@@prompt_1} wearing glasses grinning with a bloodied mouth and tooth knocked out looking in the mirror with a terrified and hilarious expression on his face.", negativePrompt: "grotesque, distorted face, monster, perfect teeth" },
@@ -82,6 +86,7 @@ const script = [
                 stateVar: "@@selected_movie",
                 writeToStateVar: "@@depth2img_command_scene4",
                 selections: {
+                    "Pulp Fiction":     { image: "PulpFiction/PulpFiction_4_Duo.jpg", prompt: "{@@prompt_0} with slicked back hair and {@@prompt_1} with an afro wearing suits and pointing guns with stern expressions on their faces. Standing in front of featureless gray walls riddled with bullet holes. Cinematic shot. Canon 5d.", negativePrompt: "grotesque, distorted face, unrealistic hands, unrealistic fingers" },
                     "Bloodsport":       { image: "Bloodsport/Bloodsport_4_KO.jpg", prompt: "muscular {@@prompt_0} delivers a knockout blow to {@@prompt_1}. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster" },
                     "Step Brothers":    { image: "StepBrothers/StepBrothers_4_Portrait.jpg", prompt: "80s style studio family portrait of {@@prompt_0} and {@@prompt_1} staring wistfully at the camera. Dressed in preppy attire. cinematic shot. canon 5d.", negativePrompt: "grotesque, distorted face, monster, bad hands" },
                     "The Hangover":     { image: "Hangover/Hangover_4_Rooftop.jpg", prompt: "Severely sunburned skin disheveled {@@prompt_2} wearing a dirty white unbuttoned shirt screaming while standing on a casino rooftop in the daytime. Cinematic shot. Canon 5d", negativePrompt: "grotesque, distorted face, monster, headphones, normal complexion, clean, clean shirt" },
