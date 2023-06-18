@@ -1,1 +1,0 @@
-Put MiDaS model (dpt_hybrid-midas-501f0c75.pt) in this directory.
