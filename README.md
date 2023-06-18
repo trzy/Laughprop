@@ -1,36 +1,49 @@
-# Laughprop: Stable Diffusion Party Game for CVPR2023
+# Laughprop: Stable Diffusion Party Game 
 *Copyright 2023 Bart Trzynadlowski and Steph Ng*
+
+## Overview
+
+Laughprop is a basic Stable Diffusion based party game developed originally as a demo for the [CVPR2023 demo and art exhibition](https://cvpr2023.thecvf.com/Conferences/2023/CallForDemos).
+
+I'm not an experienced web developer so I went with jQuery for the frontend and wrote the backend using Node.js with minimal external dependencies. The server and frontend communicate using a WebSocket connection, which seems to work quite well, but is not robust to disconnects (caused by e.g. the browser application being backgrounded on iOS). With a bit of effort, this should be fixable.
 
 ## Setup and Deployment
 
 ### Node.js
 
-Node.js is required to run the server from the `server/` directory. I believe `npm init` is required to initialize the project and fetch dependencies and then run the server like so:
+Node.js is required to run the Laughprop server from the `server/` directory. Use `npm install` to initialize the project and fetch dependencies. Then run the server like so:
 
 ```
-node app.mjs
+node app.mjs --local
 ```
+
+The '--local' option points Laughprop server at the local machine for image generation (see next section). In an actual online deployment, drop this option and ensure the image server list at the bottom of 'server/modules/image_generator.mjs' contains valid endpoints.
 
 ### Stable Diffusion Image Server
 
 Install AUTOMATIC1111's [stable-diffusion-webui](https://github.com/AUTOMATIC1111/stable-diffusion-webui) and the [sd-webui-controlnet](https://github.com/Mikubill/sd-webui-controlnet) extensions. To do this:
 
 - Create a Python environment (e.g., with conda) using the recommended Python version (currently 3.10.6 as of the time of this writing).
-- Install [stable-diffusion-webui](https://github.com/AUTOMATIC1111/stable-diffusion-webui) by following its instructions.
-- Install [sd-webui-controlnet](https://github.com/Mikubill/sd-webui-controlnet) from the Stable Diffusion web GUI, as detailed in its instructions. **This step can be skipped until ControlNet becomes required.**
+- Install [stable-diffusion-webui](https://github.com/AUTOMATIC1111/stable-diffusion-webui) by following its instructions. **Version 1.1.1** was used at the time of this writing and is recommended to ensure compatibility.
+- Install [sd-webui-controlnet](https://github.com/Mikubill/sd-webui-controlnet) from the Stable Diffusion web GUI, as detailed in its instructions.
+  - Download the ControlNet weights [here](https://huggingface.co/lllyasviel/ControlNet-v1-1/tree/main). Download all '.pth' files (14 in total) and place them in the 'models/ControlNet' subdirectory of stable-diffusion-webui.
 - Install the depth-conditioned model weights.
   - Download `512-depth-ema.ckpt` [here](https://huggingface.co/stabilityai/stable-diffusion-2-depth/blob/main/512-depth-ema.ckpt) and place it in `stable-diffusion-webui/models/Stable-diffusion/`.
   - Copy `v2-midas-inference.yaml` from the Stable Diffusion Version 2 repository ([here](https://github.com/Stability-AI/stablediffusion/blob/main/configs/stable-diffusion/v2-midas-inference.yaml)), rename it to `512-depth-ema.yaml`, and place it in `stable-diffusion-webui/models/Stable-diffusion/` (alongside the checkpoint).
 
 Launch the Stable Diffusion web GUI with the API active (on Windows, edit `webui-user.bat` and add `--api` to `COMMANDLINE_ARGS`). It should serve from 127.0.0.1:7860.
 
+### Play a Game
+
+Open two browser tabs on your local machine and go to 'http://localhost:8080'. When the frontend sees either 'localhost' or '127.0.0.1' as the hostname, it connects to the WebSocket server using non-secure 'ws'; otherwise, when the server is remote, secure 'wss' is used.
+
 ## Server-side Game Logic and Frontend Communication
 
-Descriptions of game script execution by the server and interaction with frontend using the movie game as a reference.
+Descriptions of game script execution by the server and interaction with frontend using the movie game as a reference. This is intended to help developers understand how the server plays a game and communicates with the frontend. 
 
 #### Game Script Execution
 
-The movie game script is located in `server/modules/games/movies.mjs` and the `Game` class in `server/app.mjs` is used to execute a game script and maintain state.
+The movie game script is located in `server/modules/games/movies.mjs` and the `Game` class in `server/modules/game.mjs` is used to execute a game script and maintain state.
 
 Game script execution model:
 
@@ -94,7 +107,7 @@ Now, returning to the `per_client` op, let's go through all the ops as if we are
             { op: "wait_for_state_var", stateVar: "@@selected_movie" },
 ```
 
-For now, there are two movies, *Bloodsport* and *Step Brothers*, and the server sends a client command that the frontend uses to render the movie selection widget. Then, the server waits for `@@selected_movie` to get set for the client. This will be set when the server
+Here, there are two movies, *Bloodsport* and *Step Brothers*, and the server sends a client command that the frontend uses to render the movie selection widget. Then, the server waits for `@@selected_movie` to get set for the client. This will be set when the server
 receives a `ClientInputMessage` containing this variable, at which point it will proceed to the next instruction. **Note**: We wait for `@@selected_movie` but in fact, the frontend also includes prompt variables that the user entered. The movie selection widget also asks
 for actor names (the prompts), and all of this is transmitted back in one message. Hence, the next instructions:
 
