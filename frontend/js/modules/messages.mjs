@@ -2,7 +2,7 @@
  ** Laughprop
  ** A Stable Diffusion Party Game
  ** Copyright 2023 Bart Trzynadlowski, Steph Ng
- ** 
+ **
  ** This file is part of Laughprop.
  **
  ** Laughprop is free software: you can redistribute it and/or modify it under
@@ -49,6 +49,8 @@ function tryParseMessage(json)
         return Object.assign(new GameStartingStateMessage(), json);
     case "FailedToJoinMessage":
         return Object.assign(new FailedToJoinMessage(), json);
+    case "RejoinGameMessage":
+        return Object.assign(new RejoinGameMessage(), json);
     case "ReturnToLobbyMessage":
         return Object.assign(new ReturnToLobbyMessage(), json);
     case "SelectGameStateMessage":
@@ -124,6 +126,19 @@ class FailedToJoinMessage
     }
 }
 
+class RejoinGameMessage
+{
+    __id = "RejoinGameMessage";
+    sessionId;
+    clientId;
+
+    constructor(sessionId, clientId)
+    {
+        this.sessionId = sessionId;
+        this.clientId = clientId;
+    }
+}
+
 class ReturnToLobbyMessage
 {
     __id = "ReturnToLobbyMessage";
@@ -189,6 +204,7 @@ export
     LeaveGameMessage,
     GameStartingStateMessage,
     FailedToJoinMessage,
+    RejoinGameMessage,
     ReturnToLobbyMessage,
     SelectGameStateMessage,
     ChooseGameMessage,

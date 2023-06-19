@@ -36,6 +36,7 @@ import
     LeaveGameMessage,
     GameStartingStateMessage,
     FailedToJoinMessage,
+    RejoinGameMessage,
     ReturnToLobbyMessage,
     SelectGameStateMessage,
     ChooseGameMessage,
@@ -51,11 +52,12 @@ import { Canvas } from "./modules/canvas.mjs";
 
 var _socket = null;
 var _clientId = generateUuid();
+var _currentGameSessionId = null;   // when a game is in progress, this contains the session ID
 
 function connectToBackend()
 {
     let location = window.location;
-    let isLocal = location.hostname == "localhost" || location.hostname == "127.0.0.1";
+    let isLocal = location.hostname == "localhost" || location.hostname == "127.0.0.1"; // Test PC at home: || location.hostname == "192.168.0.100";
     let protocol = isLocal ? "ws" : "wss";  // cannot mix secure wss with unsecure http on local machines
     let wsUrl = protocol + "://" + location.hostname + ":" + location.port;
 
@@ -66,6 +68,12 @@ function connectToBackend()
     {
         console.log("Connection established");
         sendMessage(new HelloMessage("Hello from Laughprop client"));
+
+        // If we are re-connecting (a game was in progress), send a request to re-join
+        if (_currentGameSessionId)
+        {
+            sendMessage(new RejoinGameMessage(_currentGameSessionId, _clientId));
+        }
     };
 
     _socket.onmessage = function(event)
@@ -111,12 +119,45 @@ function connectToBackend()
         {
             console.log(`Connection died (code=${event.code}, reason=${event.reason})`);
         }
+        scheduleReconnectAttempt();
     };
 
     _socket.onerror = function(error)
     {
         console.log("Error: Socket error");
+        scheduleReconnectAttempt();
     };
+}
+
+function scheduleReconnectAttempt()
+{
+    if (_socket != null)
+    {
+        _socket.close();
+    }
+    _socket = null;
+    setTimeout(tryReconnect, 1000);
+}
+
+function tryReconnect()
+{
+    if (_socket != null)
+    {
+        // Guard against multiple errors causing a pileup of reconnect events
+        console.log("Aborting reconnect attempt because socket appears connected");
+        return;
+    }
+
+    if (_currentGameSessionId)
+    {
+        // We can attempt to rejoin the game
+        connectToBackend();
+    }
+    else
+    {
+        // There was no game, so just restart
+        onReturnToLobby("Restarted due to connection error.");
+    }
 }
 
 function sendMessage(msg)
@@ -157,6 +198,7 @@ function onJoinGameButtonClicked()
     sendMessage(new JoinGameMessage(sessionId, _clientId));
 }
 
+// Called when we have started a game and gives us the game session ID
 function onGameStartingState(msg)
 {
     hideAllScreens();
@@ -168,7 +210,7 @@ function onGameStartingState(msg)
     $("#StartingNewGameMessage").show();
     $("#WelcomeScreen #Buttons").hide();
     $("#GameID").val(msg.sessionId);
-
+    _currentGameSessionId = msg.sessionId;
 }
 
 function onFailedToJoinState(reason)
@@ -228,6 +270,7 @@ function onReturnToLobby(gameInterruptedReason)
         $("#GameErrorMessage span").text(gameInterruptedReason);
         $("#GameErrorMessage").show();
     }
+    _currentGameSessionId = null;
 }
 
 
@@ -269,6 +312,7 @@ function deselectAllButtons()
     }
 }
 
+// Called when we join a game (and gives us our game session ID)
 function onSelectGameState(msg)
 {
     hideAllScreens();
@@ -279,6 +323,8 @@ function onSelectGameState(msg)
     _movieGameButton.off("click").click(function() { onMovieGameButtonClicked() });
     _drawingGameButton.off("click").click(function() { onDrawingGameButtonClicked(); });
     deselectAllButtons();
+
+    _currentGameSessionId = msg.sessionId;
 }
 
 
