@@ -2,7 +2,7 @@
  ** Laughprop
  ** A Stable Diffusion Party Game
  ** Copyright 2023 Bart Trzynadlowski, Steph Ng
- ** 
+ **
  ** This file is part of Laughprop.
  **
  ** Laughprop is free software: you can redistribute it and/or modify it under
@@ -173,7 +173,7 @@ class Session
             this._game = new Game(movie_game.script, this._clientIds, this._sendMessageToClientFn, this._imageGenerator);
             this._game.start();
             break;
-        case "Drawing Game":
+        case "What-the-Doodle":
             this._game = new Game(drawing_game.script, this._clientIds, this._sendMessageToClientFn, this._imageGenerator);
             this._game.start();
             break;

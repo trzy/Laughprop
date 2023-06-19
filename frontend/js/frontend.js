@@ -2,7 +2,7 @@
  ** Laughprop
  ** A Stable Diffusion Party Game
  ** Copyright 2023 Bart Trzynadlowski, Steph Ng
- ** 
+ **
  ** This file is part of Laughprop.
  **
  ** Laughprop is free software: you can redistribute it and/or modify it under
@@ -258,7 +258,7 @@ function onDrawingGameButtonClicked()
 {
     deselectAllButtons();
     _drawingGameButton.addClass("button-selected");
-    sendMessage(new ChooseGameMessage("Drawing Game"));
+    sendMessage(new ChooseGameMessage("What-the-Doodle"));
 }
 
 function deselectAllButtons()

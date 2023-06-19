@@ -30,7 +30,7 @@ const script = [
     // Begin by clearing state and display area on client side
     { op: "init_state" },
     { op: "client_ui", ui: { command: "init_game" } },
-    { op: "client_ui", ui: { command: "title", param: "Drawing Game" } },
+    { op: "client_ui", ui: { command: "title", param: "What-the-Doodle" } },
 
     // Create a mapping between clients which determines to whom each client passes along its output
     { op: "random_client_input_output_mapping", writeToStateVar: "@in_out_map" },
