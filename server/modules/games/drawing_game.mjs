@@ -2,7 +2,7 @@
  ** Laughprop
  ** A Stable Diffusion Party Game
  ** Copyright 2023 Bart Trzynadlowski, Steph Ng
- ** 
+ **
  ** This file is part of Laughprop.
  **
  ** Laughprop is free software: you can redistribute it and/or modify it under
@@ -70,7 +70,7 @@ const script = [
             { op: "wait_for_state_var", stateVar: "@@user_drawing" },
 
             // Generate images
-            { op: "client_ui", ui: { command: "instructions", param: "Just a moment. Turning your doodle into a masterpiece..." } },
+            { op: "client_ui", ui: { command: "instructions", param: "Just a moment. Turning your doodle into a masterpiece. Keep the browser window open and active..." } },
             { op: "client_ui", ui: { command: "canvas_widget", param: null } },
             { op: "sketch2img", prompt: "@@scribble_prompt_1", image: "@@user_drawing", writeToStateVar: "@@image_candidates_by_id" },
 
@@ -87,7 +87,7 @@ const script = [
 
             // Wait for user selection
             { op: "wait_for_state_var", stateVar: "@@selected_image_id" },
-            { op: "client_ui", ui: { command: "instructions", param: "Waiting for others to make their selections..."} },
+            { op: "client_ui", ui: { command: "instructions", param: "Waiting for others to make their selections. Keep the browser window open and active..."} },
             { op: "client_ui", ui: { command: "image_carousel_widget", param: null } },
 
             // Send the selected image to everyone. Must create a map containing a single entry:

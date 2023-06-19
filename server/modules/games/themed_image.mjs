@@ -2,7 +2,7 @@
  ** Laughprop
  ** A Stable Diffusion Party Game
  ** Copyright 2023 Bart Trzynadlowski, Steph Ng
- ** 
+ **
  ** This file is part of Laughprop.
  **
  ** Laughprop is free software: you can redistribute it and/or modify it under
@@ -55,7 +55,7 @@ const script = [
             { op: "wait_for_state_var", stateVar: "@@prompt" },
 
             // Generate images
-            { op: "client_ui", ui: { command: "instructions", param: "Just a moment. Generating images..." } },
+            { op: "client_ui", ui: { command: "instructions", param: "Just a moment. Generating images. Keep the browser window open and active..." } },
             { op: "client_ui", ui: { command: "prompt_widget", param: null } },
             { op: "txt2img", prompt: "@@prompt", writeToStateVar: "@@image_candidates_by_id" },
 
@@ -81,7 +81,7 @@ const script = [
 
             // Return to waiting for everyone else
             { op: "client_ui", ui: { command: "image_carousel_widget", param: null } },
-            { op: "client_ui", ui: { command: "instructions", param: "Hang tight while everyone else makes their selections..." } },
+            { op: "client_ui", ui: { command: "instructions", param: "Hang tight while everyone else makes their selections. Keep the browser window open and active..." } },
         ]
     },
 

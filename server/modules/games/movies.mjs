@@ -2,7 +2,7 @@
  ** Laughprop
  ** A Stable Diffusion Party Game
  ** Copyright 2023 Bart Trzynadlowski, Steph Ng
- ** 
+ **
  ** This file is part of Laughprop.
  **
  ** Laughprop is free software: you can redistribute it and/or modify it under
@@ -129,7 +129,7 @@ const script = [
 
             // Wait for image candidates for scene 1 to arrive, send to user for display, then wait
             // for user's selection
-            { op: "client_ui", ui: { command: "instructions", param: "Filming underway. Coming soon to a browser near you! This may take a while, please be patient..." } },
+            { op: "client_ui", ui: { command: "instructions", param: "Filming underway. Coming soon to a browser near you! This may take a while, please be patient and do not let your phone screen turn off..." } },
             { op: "client_ui", ui: { command: "multi_select_multi_prompt_widget", param: null } },
             { op: "client_ui", ui: { command: "image_carousel_widget", param: null } },
             { op: "wait_for_state_var", stateVar: "@@image_candidates_by_id_scene1" },
@@ -142,7 +142,7 @@ const script = [
             { op: "delete", stateVar: "@@selected_image_id" },
 
             // ... scene 2 ...
-            { op: "client_ui", ui: { command: "instructions", param: "Filming underway for scene 2/4. Please be patient..." } },
+            { op: "client_ui", ui: { command: "instructions", param: "Filming underway for scene 2/4. Please be patient and do not let your phone screen turn off..." } },
             { op: "client_ui", ui: { command: "multi_select_multi_prompt_widget", param: null } },
             { op: "client_ui", ui: { command: "image_carousel_widget", param: null } },
             { op: "wait_for_state_var", stateVar: "@@image_candidates_by_id_scene2" },
@@ -155,7 +155,7 @@ const script = [
             { op: "delete", stateVar: "@@selected_image_id" },
 
             // ... scene 3 ...
-            { op: "client_ui", ui: { command: "instructions", param: "Filming underway for scene 3/4. Please be patient..." } },
+            { op: "client_ui", ui: { command: "instructions", param: "Filming underway for scene 3/4. Please be patient and do not let your phone screen turn off..." } },
             { op: "client_ui", ui: { command: "multi_select_multi_prompt_widget", param: null } },
             { op: "client_ui", ui: { command: "image_carousel_widget", param: null } },
             { op: "wait_for_state_var", stateVar: "@@image_candidates_by_id_scene3" },
@@ -168,7 +168,7 @@ const script = [
             { op: "delete", stateVar: "@@selected_image_id" },
 
             // ... scene 4 ...
-            { op: "client_ui", ui: { command: "instructions", param: "Filming underway for scene 4/4. Please be patient..." } },
+            { op: "client_ui", ui: { command: "instructions", param: "Filming underway for scene 4/4. Please be patient and do not let your phone screen turn off..." } },
             { op: "client_ui", ui: { command: "multi_select_multi_prompt_widget", param: null } },
             { op: "client_ui", ui: { command: "image_carousel_widget", param: null } },
             { op: "wait_for_state_var", stateVar: "@@image_candidates_by_id_scene4" },
@@ -182,7 +182,7 @@ const script = [
 
             // Return to waiting for everyone else
             { op: "client_ui", ui: { command: "image_carousel_widget", param: null } },
-            { op: "client_ui", ui: { command: "instructions", param: "Hang tight while everyone else makes their selections..." } },
+            { op: "client_ui", ui: { command: "instructions", param: "Hang tight while everyone else makes their selections.  Do not let your phone screen turn off..." } },
 
             // Construct a single array holding all image IDs in scene order
             { op: "copy", source: [ "@@selected_image_id_scene1", "@@selected_image_id_scene2", "@@selected_image_id_scene3", "@@selected_image_id_scene4" ], writeToStateVar: "@@selected_image_ids" },
