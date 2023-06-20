@@ -2,7 +2,7 @@
  ** Laughprop
  ** A Stable Diffusion Party Game
  ** Copyright 2023 Bart Trzynadlowski, Steph Ng
- ** 
+ **
  ** This file is part of Laughprop.
  **
  ** Laughprop is free software: you can redistribute it and/or modify it under
@@ -20,12 +20,28 @@
  **/
 
 body {
+    background: radial-gradient(circle at center, #C6FF9A 0%, #83E1FF 100%);
+}
+
+.bg-tile {
+    background: url("images/tiled_bg.png");
+    background-size: 6em;
+    background-repeat: repeat;
+    position: fixed;
+    height: 100%;
+    width: 100%;
+    z-index: -1;
+    top: 0;
 }
 
 .title {
     text-align: center;
     margin-top: 4rem;
     margin-bottom: 0;
+    background-repeat: repeat-y;
+    padding: 40px;
+    max-width: max-content;
+    width: 100%;
 }
 
 .subtitle {
@@ -55,6 +71,9 @@ body {
 .screen {
     padding: 1.8rem;
     padding-top: 0;
+    margin: 0 16px;
+    border-radius: 12px;
+    background-color: white;
 }
 .message {
     margin: 1.8rem 0;

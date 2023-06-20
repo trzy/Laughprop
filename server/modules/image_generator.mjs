@@ -360,7 +360,7 @@ class ImageGenerator
         payload["negative_prompt"] = params.negativePrompt;
         payload["seed"] = 42;
         payload["cfg_scale"] = 9;   // 7?
-        payload["steps"] = 40;
+        // payload["steps"] = 40;
         payload["batch_size"] = imageRequest.batchSize;
         payload["n_iter"] = imageRequest.numIterations;
 
@@ -524,7 +524,7 @@ class ImageGenerator
         payload["seed"] = 585501288;
         payload["cfg_scale"] = 9;
         payload["denoising_strength"] = 0.9;
-        payload["steps"] = 50;
+        // payload["steps"] = 50;
         payload["batch_size"] = imageRequest.batchSize;
         payload["n_iter"] = imageRequest.numIterations;
         payload["sampler_name"] = "DDIM",
@@ -691,7 +691,7 @@ class ImageGenerator
         payload["prompt"] = prompt;
         payload["seed"] = 42;
         payload["cfg_scale"] = 9;   // 7?
-        payload["steps"] = 40;
+        // payload["steps"] = 40;
         payload["batch_size"] = imageRequest.batchSize;
         payload["n_iter"] = imageRequest.numIterations;
         payload["init_images"] = [ inputImageBase64 ];
