@@ -2,7 +2,7 @@
  ** Laughprop
  ** A Stable Diffusion Party Game
  ** Copyright 2023 Bart Trzynadlowski, Steph Ng
- ** 
+ **
  ** This file is part of Laughprop.
  **
  ** Laughprop is free software: you can redistribute it and/or modify it under
@@ -410,8 +410,8 @@ class Game
 
     _do_txt2img(op, clientId)
     {
-        const prompt = this._expandStateVar(clientId, op.prompt);
-        this._imageGenerator.makeTxt2ImgRequest(clientId, prompt, op.writeToStateVar);
+        const params = this._expandStateVar(clientId, op.params);
+        this._imageGenerator.makeTxt2ImgRequest(clientId, params, op.writeToStateVar);
         return true;
     }
 

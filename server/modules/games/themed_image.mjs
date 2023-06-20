@@ -33,17 +33,37 @@ const script = [
     { op: "client_ui", ui: { command: "init_game" } },
     { op: "client_ui", ui: { command: "title", param: "It's a Mood" } },
 
-    // Select a random theme
+    // Select a random theme index.
     {
-        op:             "random_choice",
-        writeToStateVar:    "@theme",
+        op:                 "random_choice",
+        writeToStateVar:    "@theme_index",
         choices:            [
-            "Best place to hide in a zombie apocalypse.",
-            "A hairy situation.",
-            "Celebrities supplementing their income.",
-            "Ancient technology.",
-            "Creepy mimes.",
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
         ]
+    },
+
+    // Get the theme to show the user
+    {
+        op:                 "select",
+        stateVar:           "@theme_index",
+        writeToStateVar:    "@theme",
+        selections:         {
+            0: "Best place to hide in a zombie apocalypse.",
+            1: "A hairy situation.",
+            2: "Celebrities supplementing their income.",
+            3: "Ancient technology.",
+            4: "Creepy mimes.",
+            5: "Hungry cartoon characters.",
+            6: "The DJ is *who*?",
+            7: "Utopia."
+        }
     },
     { op: "client_ui", ui: { command: "instructions", param: "Describe a scene that best fits the theme." } },
     { op: "client_ui", ui: { command: "prompt_widget", param: "@theme" } },
@@ -54,10 +74,27 @@ const script = [
             // Wait for prompt
             { op: "wait_for_state_var", stateVar: "@@prompt" },
 
+            // Construct txt2img parameters using the prompt
+            {
+                op:                 "select",
+                stateVar:           "@theme_index",
+                writeToStateVar:    "@@txt2img_params",
+                selections:         {
+                    0: { prompt: "@@prompt", negativePrompt: "" },  // best place to hide
+                    1: { prompt: "@@prompt", negativePrompt: "" },  // hairy situation
+                    2: { prompt: "@@prompt", negativePrompt: "distorted faces, distorted hands, grotesque" },   // celebrities
+                    3: { prompt: "@@prompt", negativePrompt: "" },  // ancient technology
+                    4: { prompt: "{@@prompt}, photorealistic. cinematic shot. dslr. 8k.", negativePrompt: "" },  // creepy mimes
+                    5: { prompt: "{@@prompt}, Disney, Animated, Octane render, High quality, Masterpiece.", negativePrompt: "blur" },   // hungry cartoons
+                    6: { prompt: "{@@prompt},  DJ in a nightclub, mixing live on stage, giant mixing table, 4k resolution, a masterpiece. close up", negativePrompt: "easynegative, bad-hands-5, grainy, low-res, extra limb, poorly drawn hands, missing limb, blurry, malformed hands, blur" },  // DJ
+                    7: { prompt: "{@@prompt}, fantasy painting. pixar and hayao miyazaki", negativePrompt: "ugly, ugly arms, ugly hands, out of frame, distorted faces, grotesque" },   // utopia
+                }
+            },
+
             // Generate images
             { op: "client_ui", ui: { command: "instructions", param: "Just a moment. Generating images. Keep the browser window open and active..." } },
             { op: "client_ui", ui: { command: "prompt_widget", param: null } },
-            { op: "txt2img", prompt: "@@prompt", writeToStateVar: "@@image_candidates_by_id" },
+            { op: "txt2img", params: "@@txt2img_params", writeToStateVar: "@@image_candidates_by_id" },
 
             // Wait for image candidates to arrive
             { op: "wait_for_state_var", stateVar: "@@image_candidates_by_id" },

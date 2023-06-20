@@ -2,7 +2,7 @@
  ** Laughprop
  ** A Stable Diffusion Party Game
  ** Copyright 2023 Bart Trzynadlowski, Steph Ng
- ** 
+ **
  ** This file is part of Laughprop.
  **
  ** Laughprop is free software: you can redistribute it and/or modify it under
@@ -45,14 +45,14 @@ class Txt2ImgRequest
     imageServersAttempted = new Set();  // attempted image servers (by ImageServer class) not to re-try again
 
     // Txt2img
-    prompt;
+    params;
 
-    constructor(clientId, session, prompt, destStateVar)
+    constructor(clientId, session, params, destStateVar)
     {
         this.clientId = clientId;
         this.session = session;
 
-        this.prompt = prompt;
+        this.params = params;
         this.destStateVar = destStateVar;
     }
 }
@@ -162,7 +162,7 @@ class ImageGenerator
     _depth2ImgModel = "512-depth-ema.ckpt";
 
 
-    makeTxt2ImgRequest(clientId, prompt, destStateVar)
+    makeTxt2ImgRequest(clientId, params, destStateVar)
     {
         const session = this._tryGetSessionByClientId(clientId);
         if (!session)
@@ -172,7 +172,7 @@ class ImageGenerator
         }
 
         // Initial request attempt
-        const imageRequest = new Txt2ImgRequest(clientId, session, prompt, destStateVar);
+        const imageRequest = new Txt2ImgRequest(clientId, session, params, destStateVar);
         this._dispatchImageRequestToServer(imageRequest);
         this._tryProcessNextRequest();
     }
@@ -312,7 +312,7 @@ class ImageGenerator
 
         const clientId = imageRequest.clientId;
         const session = imageRequest.session;
-        const prompt = imageRequest.prompt;
+        const params = imageRequest.params;
         const destStateVar = imageRequest.destStateVar;
 
         // Defaults
@@ -356,7 +356,8 @@ class ImageGenerator
         };
 
         // Our params
-        payload["prompt"] = prompt;
+        payload["prompt"] = params.prompt;
+        payload["negative_prompt"] = params.negativePrompt;
         payload["seed"] = 42;
         payload["cfg_scale"] = 9;   // 7?
         payload["steps"] = 40;
