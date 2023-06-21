@@ -21,6 +21,16 @@ Laughprop contains three mini-games:
 
 I'm not an experienced web developer so I went with jQuery for the frontend and wrote the backend using Node.js with minimal external dependencies. The server and frontend communicate using a WebSocket connection, which seems to work quite well. An attempt has been made to make the protocol resilient to disconnects (e.g., if the phone screen turns off). This isn't bullet-proof and the entire protocol should be changed to be less stateful.
 
+## Authors
+
+If you like the idea and have any thoughts, please get in touch with us!
+
+- Bart Trzynadlowski
+  - [Personal web site](http://trzy.org)
+  - [Professional web site](http://cambrianmoment.com)
+- Steph Ng
+  - [Personal web site](http://steph.ng)
+
 ## Setup and Deployment
 
 ### Node.js
