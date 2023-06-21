@@ -5,6 +5,10 @@
   <img src="assets/MovieGame.gif"/>
 </p>
 
+<p align="center">
+  <img src="assets/DrawingGame.gif"/>
+</p>
+
 ## Overview
 
 Laughprop is a basic Stable Diffusion based party game developed originally as a demo for the [CVPR2023 demo and art exhibition](https://cvpr2023.thecvf.com/Conferences/2023/CallForDemos).
