@@ -996,6 +996,9 @@ function onClientUIMessage(msg)
             });
 
             _canvasContainer.show();
+
+	    // Nasty hack for iOS bug where scrolled page introduces a canvas touch offset
+            $(window).scrollTop(0);
         }
         else
         {
