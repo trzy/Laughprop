@@ -2,11 +2,11 @@
 *Copyright 2023 Bart Trzynadlowski and Steph Ng*
 
 <p align="center">
-  <img src="assets/MovieGame.gif"/>
+  <img src="assets/DrawingGame.gif"/>
 </p>
 
 <p align="center">
-  <img src="assets/DrawingGame.gif"/>
+  <img src="assets/MovieGame.gif"/>
 </p>
 
 ## Overview
