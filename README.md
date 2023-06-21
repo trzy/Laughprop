@@ -9,6 +9,12 @@
 
 Laughprop is a basic Stable Diffusion based party game developed originally as a demo for the [CVPR2023 demo and art exhibition](https://cvpr2023.thecvf.com/Conferences/2023/CallForDemos).
 
+Laughprop contains three mini-games:
+
+1. **It's a Mood**: Given a theme, write a prompt to generate an image. Players vote for the best one.
+2. **I'd Watch That**: Players select from a list of movies and play the role of casting director by replacing the original actors with their picks. The best voted movie wins.
+3. **What-the-Doodle**: Players describe a scene that they feel they could draw. These are revealed to other players who must draw them using simple line doodles. An image is generated from the doodle and then passed along for captioning. The results are then shown: initial description, image generated from doodle, caption (interpretation). Recommended for 3+ players.
+
 I'm not an experienced web developer so I went with jQuery for the frontend and wrote the backend using Node.js with minimal external dependencies. The server and frontend communicate using a WebSocket connection, which seems to work quite well. An attempt has been made to make the protocol resilient to disconnects (e.g., if the phone screen turns off). This isn't bullet-proof and the entire protocol should be changed to be less stateful.
 
 ## Setup and Deployment
