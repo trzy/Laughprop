@@ -1,11 +1,15 @@
-# Laughprop: Stable Diffusion Party Game 
+# Laughprop: Stable Diffusion Party Game
 *Copyright 2023 Bart Trzynadlowski and Steph Ng*
+
+<p align="center">
+  <img src="assets/MovieGame.gif"/>
+</p>
 
 ## Overview
 
 Laughprop is a basic Stable Diffusion based party game developed originally as a demo for the [CVPR2023 demo and art exhibition](https://cvpr2023.thecvf.com/Conferences/2023/CallForDemos).
 
-I'm not an experienced web developer so I went with jQuery for the frontend and wrote the backend using Node.js with minimal external dependencies. The server and frontend communicate using a WebSocket connection, which seems to work quite well, but is not robust to disconnects (caused by e.g. the browser application being backgrounded on iOS). With a bit of effort, this should be fixable.
+I'm not an experienced web developer so I went with jQuery for the frontend and wrote the backend using Node.js with minimal external dependencies. The server and frontend communicate using a WebSocket connection, which seems to work quite well. An attempt has been made to make the protocol resilient to disconnects (e.g., if the phone screen turns off). This isn't bullet-proof and the entire protocol should be changed to be less stateful.
 
 ## Setup and Deployment
 
@@ -39,7 +43,7 @@ Open two browser tabs on your local machine and go to 'http://localhost:8080'. W
 
 ## Server-side Game Logic and Frontend Communication
 
-Descriptions of game script execution by the server and interaction with frontend using the movie game as a reference. This is intended to help developers understand how the server plays a game and communicates with the frontend. 
+Descriptions of game script execution by the server and interaction with frontend using the movie game as a reference. This is intended to help developers understand how the server plays a game and communicates with the frontend.
 
 #### Game Script Execution
 
